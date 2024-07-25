@@ -1,0 +1,16 @@
+CREATE TABLE IF NOT EXISTS passwords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    created_at TEXT NULL,
+    updated_at TEXT NULL
+) STRICT;
+
+CREATE TABLE IF NOT EXISTS crypto (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    password TEXT UNIQUE NOT NULL,
+    secret_key TEXT UNIQUE NOT NULL,
+    iv TEXT UNIQUE NOT NULL,
+    created_at TEXT NULL,
+    updated_at TEXT NULL
+) STRICT;
