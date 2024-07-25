@@ -21,6 +21,9 @@
 go.work
 go.work.sum
 
+# OS files
+.DS_Store
+
 # Application runtime files
 *.sqlite
 /cmd/log
