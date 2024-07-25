@@ -20,6 +20,7 @@ func main() {
 	const logPath string = "./cmd/log"
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
+		// TODO implement GUI response
 		log.Fatal(fmt.Errorf("Error during opening log file: %w", err))
 	}
 	defer logFile.Close()
@@ -35,11 +36,16 @@ func main() {
 
 	if err != nil {
 		logger.Error(fmt.Errorf("Error during initilization of database: %w", err).Error(), slog.String("trace", trace.CurrentWindow()))
+		// TODO implement GUI response
 	}
 
 	err = backend.CreateStructure()
 
 	if err != nil {
 		logger.Error(fmt.Errorf("Error during creation of db schema: %w", err).Error(), slog.String("trace", trace.CurrentWindow()))
+		// TODO implement GUI response
 	}
+
+	// n, err := backend.CountMasterEntries()
+
 }
