@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/mszalewicz/frosk/backend"
-	"github.com/mszalewicz/frosk/trace"
+	"github.com/mszalewicz/frosk/helpers"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -18,13 +18,17 @@ func main() {
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\log
 	// 		Linux:     /var/lib/frosk/log
 	const logPath string = "./cmd/log"
+
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		// TODO implement GUI response
 		log.Fatal(fmt.Errorf("Error during opening log file: %w", err))
 	}
 	defer logFile.Close()
-	logger := slog.New(slog.NewJSONHandler(logFile, nil))
+
+	loggerArgs := &slog.HandlerOptions{AddSource: true}
+	logger := slog.New(slog.NewJSONHandler(logFile, loggerArgs))
+	slog.SetDefault(logger)
 
 	// TODO: set db path such that it will much OS native path scheme:
 	// 		Mac:       ~/Library/Applications Support/frosk/application.sqlite
@@ -32,20 +36,27 @@ func main() {
 	// 		Linux:     /var/lib/frosk/application.sqlite
 	const applicationDB string = "./sql/application.sqlite"
 
-	backend, err := backend.Initialize(applicationDB, logger)
+	// errToHandleInGUI is an error that was logged in the function that returns it
+	// It is returned to indicate that something went wrong and should be reflected in GUI state
+	backend, errToHandleInGUI := backend.Initialize(applicationDB)
 
-	if err != nil {
-		logger.Error(fmt.Errorf("Error during initilization of database: %w", err).Error(), slog.String("trace", trace.CurrentWindow()))
+	if errToHandleInGUI != nil {
 		// TODO implement GUI response
 	}
 
-	err = backend.CreateStructure()
+	errToHandleInGUI = backend.CreateStructure()
 
-	if err != nil {
-		logger.Error(fmt.Errorf("Error during creation of db schema: %w", err).Error(), slog.String("trace", trace.CurrentWindow()))
+	if errToHandleInGUI != nil {
 		// TODO implement GUI response
 	}
 
 	// n, err := backend.CountMasterEntries()
+	fmt.Println(helpers.RandString(150, true))
+	os.Exit(1)
+	// backend.InsertMaster("test")o
+
+	// ""
+
+	//    '2025-05-29 14:16:00'
 
 }
