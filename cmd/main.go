@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/mszalewicz/frosk/backend"
-	"github.com/mszalewicz/frosk/helpers"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -50,13 +49,14 @@ func main() {
 		// TODO implement GUI response
 	}
 
-	// n, err := backend.CountMasterEntries()
-	fmt.Println(helpers.RandString(150, true))
-	os.Exit(1)
-	// backend.InsertMaster("test")o
+	n, err := backend.CountMasterEntries()
 
-	// ""
-
-	//    '2025-05-29 14:16:00'
+	if n == 0 {
+		// TODO: get master password from GUI
+		err := backend.InitMaster([]byte("placeholder"))
+		if err != nil {
+			// TODO implement GUI response
+		}
+	}
 
 }
