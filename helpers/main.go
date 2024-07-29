@@ -3,8 +3,13 @@
 package helpers
 
 import (
+	"fmt"
+	"log"
+	"log/slog"
 	"math/rand"
 	"time"
+
+	"golang.org/x/exp/constraints"
 )
 
 // Cast date into string comforming to ISO 8601.
@@ -34,4 +39,20 @@ func RandString(length int, allowSpecialChars bool) string {
 	}
 
 	return string(randString)
+}
+
+func Assert[T comparable](x T, y T) {
+	if x != y {
+		err := fmt.Errorf("Assert error. Value x does not equal value y. Where x = %v, y = %v", x, y)
+		slog.Error(err.Error())
+		log.Fatal(err)
+	}
+}
+
+func AssertBigger[T constraints.Ordered](x T, y T) {
+	if x < y {
+		err := fmt.Errorf("Assert error. Value x is not bigger then y. Where x = %v, y = %v", x, y)
+		slog.Error(err.Error())
+		log.Fatal(err)
+	}
 }
