@@ -40,12 +40,14 @@ func main() {
 	backend, errToHandleInGUI := backend.Initialize(applicationDB)
 
 	if errToHandleInGUI != nil {
+		fmt.Println(errToHandleInGUI)
 		// TODO implement GUI response
 	}
 
 	errToHandleInGUI = backend.CreateStructure()
 
 	if errToHandleInGUI != nil {
+		fmt.Println(errToHandleInGUI)
 		// TODO implement GUI response
 	}
 
@@ -53,10 +55,19 @@ func main() {
 
 	if n == 0 {
 		// TODO: get master password from GUI
-		err := backend.InitMaster([]byte("placeholder"))
-		if err != nil {
-			// TODO implement GUI response
+		// TODO: if master password < 1, show appriopriate GUI message
+		errToHandleInGUI := backend.InitMaster("placeholder")
+		if errToHandleInGUI != nil {
+			fmt.Println(errToHandleInGUI)
+			// TODO: implement GUI response
 		}
+	}
+
+	errToHandleInGUI = backend.EncryptPasswordEntry("test", "test", "aqq")
+
+	if errToHandleInGUI != nil {
+		fmt.Println(errToHandleInGUI)
+		// TODO: implement GUI response
 	}
 
 }
