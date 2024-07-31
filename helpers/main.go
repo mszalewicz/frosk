@@ -4,9 +4,9 @@ package helpers
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
 	"math/rand"
+	"runtime/debug"
 	"time"
 
 	"golang.org/x/exp/constraints"
@@ -41,18 +41,31 @@ func RandString(length int, allowSpecialChars bool) string {
 	return string(randString)
 }
 
+// Asserting if two values are equall. If not, it stops execution of program and logs error to the slog logger and stdout.
 func Assert[T comparable](x T, y T) {
 	if x != y {
 		err := fmt.Errorf("Assert error. Value x does not equal value y. Where x = %v, y = %v", x, y)
 		slog.Error(err.Error())
-		log.Fatal(err)
+		panic(err)
 	}
 }
 
+// Asserting first value is bigger then the second one. If not, it stops execution of program and logs error to the slog logger and stdout.
 func AssertBigger[T constraints.Ordered](x T, y T) {
 	if x < y {
 		err := fmt.Errorf("Assert error. Value x is not bigger then y. Where x = %v, y = %v", x, y)
 		slog.Error(err.Error())
-		log.Fatal(err)
+		panic(err)
 	}
+}
+
+func RunAndHandlePanic(f func() []byte) (encryptedValue []byte, err error) {
+	if r := recover(); r != nil {
+		encryptedValue = nil
+		err = fmt.Errorf("Panic in %s: %v", string(debug.Stack()), r)
+	}
+
+	encryptedValue = f()
+
+	return encryptedValue, nil
 }
