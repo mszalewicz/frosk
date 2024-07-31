@@ -1,4 +1,4 @@
-// Backend orchestrate all database actions
+// Backend orchestrates all database actions
 package backend
 
 import (
@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -17,6 +18,11 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/crypto/pbkdf2"
 )
+
+var EmptyPassword = errors.New("No password given to insert.")
+var EmptyUsername = errors.New("No username name given to insert.")
+var EmptyServiceName = errors.New("No service name given to insert.")
+var EmptyMasterPassord = errors.New("No master passwrod given to compare.")
 
 type Backend struct {
 	DB *sql.DB
@@ -218,23 +224,38 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 	return nil
 }
 
-func (backend *Backend) EncryptPasswordEntry(serviceName string, password string, masterPasswordGUI string) error {
+// Insert encrypted password and encrypted username for given service name
+func (backend *Backend) EncryptPasswordEntry(serviceName string, password string, username string, masterPasswordGUI string) error {
 
 	var (
-		masterPasswordEncryptedBase64 string
-		userSecretKeyEncryptedBase64  string
-		initialVectorBase64           string
-		saltBase64                    string
-		masterPasswordEncrypted       []byte
-		userSecretKeyEncrypted        []byte
-		initialVector                 []byte
-		salt                          []byte
+		masterPasswordEncryptedBase64    string
+		userSecretKeyEncryptedBase64     string
+		initialVectorUserSecretKeyBase64 string
+		saltBase64                       string
+		masterPasswordEncrypted          []byte
+		userSecretKeyEncrypted           []byte
+		initialVectorUserSecretKey       []byte
+		salt                             []byte
 	)
 
-	// cleartext := []byte(password)
+	if len(serviceName) == 0 {
+		return EmptyServiceName
+	}
+
+	if len(password) == 0 {
+		return EmptyPassword
+	}
+
+	if len(masterPasswordGUI) == 0 {
+		return EmptyMasterPassord
+	}
+
+	if len(username) == 0 {
+		return EmptyUsername
+	}
 
 	row := backend.DB.QueryRow("SELECT password, secret_key, salt, initial_vector FROM master")
-	err := row.Scan(&masterPasswordEncryptedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorBase64)
+	err := row.Scan(&masterPasswordEncryptedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorUserSecretKeyBase64)
 
 	if err != nil {
 		errorWrapped := fmt.Errorf("Error during select query in master table: %w", err)
@@ -244,7 +265,7 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 
 	masterPasswordEncrypted, errDecodingMasterPassword := b64.StdEncoding.DecodeString(masterPasswordEncryptedBase64)
 	userSecretKeyEncrypted, errDecodingUserSecretKey := b64.StdEncoding.DecodeString(userSecretKeyEncryptedBase64)
-	initialVector, errDecodingInitialVector := b64.StdEncoding.DecodeString(initialVectorBase64)
+	initialVectorUserSecretKey, errDecodingInitialVector := b64.StdEncoding.DecodeString(initialVectorUserSecretKeyBase64)
 	salt, errDecodingSalt := b64.StdEncoding.DecodeString(saltBase64)
 
 	if errDecodingMasterPassword != nil || errDecodingUserSecretKey != nil || errDecodingSalt != nil || errDecodingInitialVector != nil {
@@ -277,7 +298,7 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 		return errorWrapped
 	}
 
-	userSecretKey, err := gcmForUserSecretKey.Open(nil, initialVector, userSecretKeyEncrypted, nil)
+	userSecretKey, err := gcmForUserSecretKey.Open(nil, initialVectorUserSecretKey, userSecretKeyEncrypted, nil)
 
 	if err != nil {
 		errorWrapped := fmt.Errorf("Error during decryption of user secret key (initialVector, userSecretKeyEncrypted) => (): %w", err)
@@ -293,8 +314,8 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 		return errorWrapped
 	}
 
-	saltPasswordEntry := make([]byte, gcmPasswordEntry.NonceSize())
-	_, err = rand.Read(saltPasswordEntry)
+	initialVectorPasswordEntry := make([]byte, gcmPasswordEntry.NonceSize())
+	_, err = rand.Read(initialVectorPasswordEntry)
 
 	if err != nil {
 		errorWrapped := fmt.Errorf("Can't create random salt: %w", err)
@@ -302,13 +323,27 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 		return errorWrapped
 	}
 
-	helpers.Assert(len(saltPasswordEntry), gcmPasswordEntry.NonceSize())
+	helpers.Assert(len(initialVectorPasswordEntry), gcmPasswordEntry.NonceSize())
 
-	passwordEncrypted := gcmPasswordEntry.Seal(nil, saltPasswordEntry, []byte(password), nil)
+	initialVectorPasswordEntryBase64 := b64.StdEncoding.EncodeToString(initialVectorPasswordEntry)
 
-	saltPasswordEntryBase64 := b64.StdEncoding.EncodeToString(saltPasswordEntry)
+	passwordEncrypted := gcmPasswordEntry.Seal(nil, initialVectorPasswordEntry, []byte(password), nil)
+	passwordEncryptedBase64 := b64.StdEncoding.EncodeToString(passwordEncrypted)
 
-	insertPasswordEntryQuery := `INSERT INTO passwords (service_name, password, initial_vector, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+	usernameEncrypted := gcmPasswordEntry.Seal(nil, initialVectorPasswordEntry, []byte(username), nil)
+	usernameEncryptedBase64 := b64.StdEncoding.EncodeToString(usernameEncrypted)
+
+	now := helpers.TimeTo8601String(time.Now())
+
+	insertPasswordEntryQuery := `INSERT INTO passwords (service_name, username, password, initial_vector, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`
+
+	_, err = backend.DB.Exec(insertPasswordEntryQuery, serviceName, usernameEncryptedBase64, passwordEncryptedBase64, initialVectorPasswordEntryBase64, now, now)
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Error inserting password entry into passwords: %w", err)
+		slog.Error(errWrapped.Error())
+		return errWrapped
+	}
 
 	return nil
 }

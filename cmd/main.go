@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
 	"os"
 
-	"github.com/mszalewicz/frosk/backend"
+	server "github.com/mszalewicz/frosk/backend"
+	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -29,6 +31,8 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(logFile, loggerArgs))
 	slog.SetDefault(logger)
 
+	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
 	// TODO: set db path such that it will much OS native path scheme:
 	// 		Mac:       ~/Library/Applications Support/frosk/application.sqlite
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\application.sqlite
@@ -37,13 +41,14 @@ func main() {
 
 	// errToHandleInGUI is an error that was logged in the function that returns it
 	// It is returned to indicate that something went wrong and should be reflected in GUI state
-	backend, errToHandleInGUI := backend.Initialize(applicationDB)
+	backend, errToHandleInGUI := server.Initialize(applicationDB)
 
 	if errToHandleInGUI != nil {
 		fmt.Println(errToHandleInGUI)
 		// TODO implement GUI response
 	}
 
+	localDevLog.Debug("Creating database from schema...")
 	errToHandleInGUI = backend.CreateStructure()
 
 	if errToHandleInGUI != nil {
@@ -51,11 +56,13 @@ func main() {
 		// TODO implement GUI response
 	}
 
-	n, err := backend.CountMasterEntries()
+	localDevLog.Debug("Checking number of entries in master table...")
+	numberOfEntriesInMasterTable, err := backend.CountMasterEntries()
 
-	if n == 0 {
+	if numberOfEntriesInMasterTable == 0 {
 		// TODO: get master password from GUI
 		// TODO: if master password < 1, show appriopriate GUI message
+		localDevLog.Debug("Initializing master table entry...")
 		errToHandleInGUI := backend.InitMaster("placeholder")
 		if errToHandleInGUI != nil {
 			fmt.Println(errToHandleInGUI)
@@ -63,11 +70,26 @@ func main() {
 		}
 	}
 
-	errToHandleInGUI = backend.EncryptPasswordEntry("test", "test", "aqq")
+	localDevLog.Debug("Creating password entry...")
+	errToHandleInGUI = backend.EncryptPasswordEntry("service name t", "password t", "username t", "placeholder")
 
 	if errToHandleInGUI != nil {
-		fmt.Println(errToHandleInGUI)
-		// TODO: implement GUI response
+		switch {
+		case errors.Is(errToHandleInGUI, server.EmptyPassword):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, server.EmptyServiceName):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, server.EmptyMasterPassord):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, server.EmptyUsername):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, bcrypt.ErrMismatchedHashAndPassword): // Check for authentication
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		}
 	}
-
 }
