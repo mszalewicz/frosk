@@ -59,6 +59,7 @@ func AssertBigger[T constraints.Ordered](x T, y T) {
 	}
 }
 
+// Gracefuly handle panic - useful for external packages
 func RunAndHandlePanic(f func() []byte) (encryptedValue []byte, err error) {
 	if r := recover(); r != nil {
 		encryptedValue = nil

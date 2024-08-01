@@ -23,13 +23,23 @@ var EmptyPassword = errors.New("No password given to insert.")
 var EmptyUsername = errors.New("No username name given to insert.")
 var EmptyServiceName = errors.New("No service name given to insert.")
 var EmptyMasterPassord = errors.New("No master passwrod given to compare.")
+var ServiceNameNotFound = errors.New("Provided service name is not present in database.")
+var ServiceNameAlreadyTaken = errors.New("Provided service name is already present in database.")
 
 type Backend struct {
 	DB *sql.DB
 }
 
+type PasswordEntry struct {
+	Username    string
+	Password    string
+	ServiceName string
+}
+
 // Returns GCM block cipher based on secret key
 func InitGCM(secretKey []byte) (cipher.AEAD, error) {
+	helpers.Assert(len(secretKey), 32) // secret key has to 32 byte long
+
 	aes, err := aes.NewCipher(secretKey)
 
 	if err != nil {
@@ -47,6 +57,77 @@ func InitGCM(secretKey []byte) (cipher.AEAD, error) {
 	}
 
 	return gcm, nil
+}
+
+func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, error) {
+	var (
+		masterPasswordEncryptedBase64    string
+		masterPasswordEncrypted          []byte
+		userSecretKeyEncryptedBase64     string
+		userSecretKeyEncrypted           []byte
+		userSecretKey                    []byte
+		initialVectorUserSecretKeyBase64 string
+		initialVectorUserSecretKey       []byte
+		saltBase64                       string
+		salt                             []byte
+	)
+
+	if len(masterPasswordGUI) == 0 {
+		return userSecretKey, EmptyMasterPassord
+	}
+
+	row := backend.DB.QueryRow("SELECT \"password\", secret_key, salt, initial_vector FROM master")
+	err := row.Scan(&masterPasswordEncryptedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorUserSecretKeyBase64)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during select query to master table: %w", err)
+		slog.Error(errorWrapped.Error())
+		return userSecretKey, err
+	}
+
+	masterPasswordEncrypted, errDecodingMasterPassword := b64.StdEncoding.DecodeString(masterPasswordEncryptedBase64)
+	userSecretKeyEncrypted, errDecodingUserSecretKey := b64.StdEncoding.DecodeString(userSecretKeyEncryptedBase64)
+	initialVectorUserSecretKey, errDecodingInitialVector := b64.StdEncoding.DecodeString(initialVectorUserSecretKeyBase64)
+	salt, errDecodingSalt := b64.StdEncoding.DecodeString(saltBase64)
+
+	if errDecodingMasterPassword != nil || errDecodingUserSecretKey != nil || errDecodingSalt != nil || errDecodingInitialVector != nil {
+		errorWrapped := fmt.Errorf("Error during decoding base64 in | master password: %w | user secret key %w | salt: %w | initial vector: %w",
+			errDecodingMasterPassword,
+			errDecodingUserSecretKey,
+			errDecodingSalt,
+			errDecodingSalt)
+
+		slog.Error(errorWrapped.Error())
+		return userSecretKey, errorWrapped
+	}
+
+	// Authenticate
+	err = bcrypt.CompareHashAndPassword(masterPasswordEncrypted, []byte(masterPasswordGUI))
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Master password from GUI input do not match databse signature: %w", err)
+		slog.Error(errorWrapped.Error())
+		return userSecretKey, errorWrapped
+	}
+
+	secretKey := pbkdf2.Key([]byte(masterPasswordGUI), salt, 4096, 32, sha256.New)
+	gcmForUserSecretKey, err := InitGCM(secretKey)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during gcm initialization: %w", err)
+		slog.Error(errorWrapped.Error())
+		return userSecretKey, errorWrapped
+	}
+
+	userSecretKey, err = gcmForUserSecretKey.Open(nil, initialVectorUserSecretKey, userSecretKeyEncrypted, nil)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during user secret key decryption: %w", err)
+		slog.Error(errorWrapped.Error())
+		return userSecretKey, errorWrapped
+	}
+
+	return userSecretKey, nil
 }
 
 // Opens connection to the sqlite local database
@@ -124,6 +205,21 @@ func (backend *Backend) CountMasterEntries() (int, error) {
 	return numberOfEntriesInMaster, nil
 }
 
+func (backend *Backend) CountServiceNameOccurences(serviceName string) (int, error) {
+	var numberOfServiceNameOccurences int
+	row := backend.DB.QueryRow("SELECT COUNT(service_name) FROM passwords WHERE service_name = ?", serviceName)
+
+	err := row.Scan(&numberOfServiceNameOccurences)
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Query counting number of entries in master table: %w", err)
+		slog.Error(errWrapped.Error())
+		return 0, errWrapped
+	}
+
+	return numberOfServiceNameOccurences, nil
+}
+
 // Create all necessary crypto primitives and insert them with master password to db
 func (backend *Backend) InitMaster(masterPassword string) error {
 	// Flow:
@@ -134,6 +230,10 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 	// Info:
 	//     master password secret key  -> derived from master password with PKBDF2, using salt
 	//     user secret key             -> used in encryption of user stored passwords
+
+	if len(masterPassword) == 0 {
+		return EmptyMasterPassord
+	}
 
 	helpers.AssertBigger(len(masterPassword), 0)
 
@@ -224,19 +324,8 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 	return nil
 }
 
-// Insert encrypted password and encrypted username for given service name
+// Inserts encrypted password and username for given service name
 func (backend *Backend) EncryptPasswordEntry(serviceName string, password string, username string, masterPasswordGUI string) error {
-
-	var (
-		masterPasswordEncryptedBase64    string
-		userSecretKeyEncryptedBase64     string
-		initialVectorUserSecretKeyBase64 string
-		saltBase64                       string
-		masterPasswordEncrypted          []byte
-		userSecretKeyEncrypted           []byte
-		initialVectorUserSecretKey       []byte
-		salt                             []byte
-	)
 
 	if len(serviceName) == 0 {
 		return EmptyServiceName
@@ -254,54 +343,22 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 		return EmptyUsername
 	}
 
-	row := backend.DB.QueryRow("SELECT password, secret_key, salt, initial_vector FROM master")
-	err := row.Scan(&masterPasswordEncryptedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorUserSecretKeyBase64)
+	serviceNameOccurences, err := backend.CountServiceNameOccurences(serviceName)
 
 	if err != nil {
-		errorWrapped := fmt.Errorf("Error during select query in master table: %w", err)
+		errorWrapped := fmt.Errorf("Problem quering count of service name occurences in passwords table: %v", err)
 		slog.Error(errorWrapped.Error())
 		return errorWrapped
 	}
 
-	masterPasswordEncrypted, errDecodingMasterPassword := b64.StdEncoding.DecodeString(masterPasswordEncryptedBase64)
-	userSecretKeyEncrypted, errDecodingUserSecretKey := b64.StdEncoding.DecodeString(userSecretKeyEncryptedBase64)
-	initialVectorUserSecretKey, errDecodingInitialVector := b64.StdEncoding.DecodeString(initialVectorUserSecretKeyBase64)
-	salt, errDecodingSalt := b64.StdEncoding.DecodeString(saltBase64)
-
-	if errDecodingMasterPassword != nil || errDecodingUserSecretKey != nil || errDecodingSalt != nil || errDecodingInitialVector != nil {
-		errorWrapped := fmt.Errorf("Error during decoding base64 in | master password: %w | user secret key %w | salt: %w | initial vector: %w",
-			errDecodingMasterPassword,
-			errDecodingUserSecretKey,
-			errDecodingSalt,
-			errDecodingSalt)
-
-		slog.Error(errorWrapped.Error())
-		return errorWrapped
+	if serviceNameOccurences != 0 {
+		return ServiceNameAlreadyTaken
 	}
 
-	// Authenticate
-	err = bcrypt.CompareHashAndPassword(masterPasswordEncrypted, []byte(masterPasswordGUI))
+	userSecretKey, err := backend.GetUserSecretKey(masterPasswordGUI)
 
 	if err != nil {
-		errorWrapped := fmt.Errorf("Master password from GUI input do not match databse signature: %w", err)
-		slog.Error(errorWrapped.Error())
-		return errorWrapped
-	}
-
-	secretKey := pbkdf2.Key([]byte(masterPasswordGUI), salt, 4096, 32, sha256.New)
-
-	gcmForUserSecretKey, err := InitGCM(secretKey)
-
-	if err != nil {
-		errorWrapped := fmt.Errorf("Error during initialization of GCM cipher block: %w", err)
-		slog.Error(errorWrapped.Error())
-		return errorWrapped
-	}
-
-	userSecretKey, err := gcmForUserSecretKey.Open(nil, initialVectorUserSecretKey, userSecretKeyEncrypted, nil)
-
-	if err != nil {
-		errorWrapped := fmt.Errorf("Error during decryption of user secret key (initialVector, userSecretKeyEncrypted) => (): %w", err)
+		errorWrapped := fmt.Errorf("Error during decryption of user secret key: %w", err)
 		slog.Error(errorWrapped.Error())
 		return errorWrapped
 	}
@@ -346,4 +403,75 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 	}
 
 	return nil
+}
+
+// Finds and decrypts passwrod and username for given service name
+func (backend *Backend) DecryptPasswordEntry(serviceName string, masterPasswordGUI string) (PasswordEntry, error) {
+	var (
+		passwordEntry           PasswordEntry
+		initialVectorBase64     string
+		initialVector           []byte
+		passwordEncryptedBase64 string
+		passwordEncrypted       []byte
+		usernameEncryptedBase64 string
+		usernameEncrypted       []byte
+		password                []byte
+		username                []byte
+	)
+
+	row := backend.DB.QueryRow("SELECT service_name, username, \"password\", initial_vector FROM passwords WHERE	service_name = ?", serviceName)
+	err := row.Scan(&passwordEntry.ServiceName, &usernameEncryptedBase64, &passwordEncryptedBase64, &initialVectorBase64)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during count query on passwords table - looking for service name = %s: %w", serviceName, err)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	initialVector, errDecodeInitialVectorBase64 := b64.StdEncoding.DecodeString(initialVectorBase64)
+	passwordEncrypted, errDecodePasswordEncryptedBas64 := b64.StdEncoding.DecodeString(passwordEncryptedBase64)
+	usernameEncrypted, errDecodeUsernameEncryptedBase64 := b64.StdEncoding.DecodeString(usernameEncryptedBase64)
+
+	if errDecodeInitialVectorBase64 != nil || errDecodePasswordEncryptedBas64 != nil || errDecodeUsernameEncryptedBase64 != nil {
+		errorWrapped := fmt.Errorf("Error during coversion from base 64 - initial vector: %w | password: %w | username: %w", errDecodeInitialVectorBase64, errDecodePasswordEncryptedBas64, errDecodeUsernameEncryptedBase64)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	userSecretKey, err := backend.GetUserSecretKey(masterPasswordGUI)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during decrytion of user secret key: %w", err)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	gcm, err := InitGCM(userSecretKey)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during creation of gcm cipher block: %w", err)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	password, err = gcm.Open(nil, initialVector, passwordEncrypted, nil)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during password decryption: %w", err)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	username, err = gcm.Open(nil, initialVector, usernameEncrypted, nil)
+
+	if err != nil {
+		errorWrapped := fmt.Errorf("Error during username decryption: %w", err)
+		slog.Error(errorWrapped.Error())
+		return passwordEntry, errorWrapped
+	}
+
+	passwordEntry.Password = string(password)
+	passwordEntry.Username = string(username)
+
+	return passwordEntry, nil
 }
