@@ -1,12 +1,18 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
+	"image/color"
 	"log"
 	"log/slog"
 	"os"
 
+	"gioui.org/app"
+	"gioui.org/op"
+	"gioui.org/text"
+	"gioui.org/widget/material"
 	server "github.com/mszalewicz/frosk/backend"
 	"golang.org/x/crypto/bcrypt"
 
@@ -56,8 +62,28 @@ func main() {
 		// TODO implement GUI response
 	}
 
+	// GUI development ---------------------------------------
+
+	go func() {
+		window := new(app.Window)
+		err := run(window)
+		if err != nil {
+			log.Fatal(err)
+		}
+		os.Exit(0)
+	}()
+
+	app.Main()
+
+	// \GUI development --------------------------------------
+
 	localDevLog.Debug("Checking number of entries in master table...")
-	numberOfEntriesInMasterTable, err := backend.CountMasterEntries()
+	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
+
+	if errToHandleInGUI != nil {
+		//TODO : implement GUI response
+		localDevLog.Debug(errToHandleInGUI.Error())
+	}
 
 	if numberOfEntriesInMasterTable == 0 {
 		// TODO: get master password from GUI
@@ -70,12 +96,22 @@ func main() {
 		}
 	}
 
+	serviceName := "google"
+	pass := "supersecretpass"
+	username := "bestestuser"
+	masterpass := "placeholder"
+
+	errToHandleInGUI = backend.EncryptPasswordEntry("test", "test", "test", masterpass) // TODO: get info from GUI
+
 	localDevLog.Debug("Creating password entry...")
-	errToHandleInGUI = backend.EncryptPasswordEntry("service name t", "password t", "username t", "placeholder")
+	errToHandleInGUI = backend.EncryptPasswordEntry(serviceName, pass, username, masterpass) // TODO: get info from GUI
 
 	if errToHandleInGUI != nil {
 		switch {
 		case errors.Is(errToHandleInGUI, server.EmptyPassword):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, server.EmptyUsername):
 			// TODO: implement GUI response
 			localDevLog.Debug(errToHandleInGUI.Error())
 		case errors.Is(errToHandleInGUI, server.EmptyServiceName):
@@ -84,12 +120,65 @@ func main() {
 		case errors.Is(errToHandleInGUI, server.EmptyMasterPassord):
 			// TODO: implement GUI response
 			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, server.EmptyUsername):
+		case errors.Is(errToHandleInGUI, server.ServiceNameAlreadyTaken):
 			// TODO: implement GUI response
 			localDevLog.Debug(errToHandleInGUI.Error())
 		case errors.Is(errToHandleInGUI, bcrypt.ErrMismatchedHashAndPassword): // Check for authentication
 			// TODO: implement GUI response
 			localDevLog.Debug(errToHandleInGUI.Error())
+		default:
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		}
+	}
+
+	localDevLog.Debug("Getting password entry...")
+	passwordEntry, errToHandleInGUI := backend.DecryptPasswordEntry(serviceName, masterpass)
+
+	if errToHandleInGUI != nil {
+		switch {
+		case errors.Is(errToHandleInGUI, sql.ErrNoRows):
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		case errors.Is(errToHandleInGUI, bcrypt.ErrMismatchedHashAndPassword): // Check for authentication
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		default:
+			// TODO: implement GUI response
+			localDevLog.Debug(errToHandleInGUI.Error())
+		}
+	}
+
+	fmt.Printf("Password entry - service name: %s | username: %s | password: %s\n", passwordEntry.ServiceName, passwordEntry.Username, passwordEntry.Password)
+
+}
+
+func run(window *app.Window) error {
+	theme := material.NewTheme()
+	var ops op.Ops
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+		case app.FrameEvent:
+			// This graphics context is used for managing the rendering state.
+			gtx := app.NewContext(&ops, e)
+
+			// Define an large label with an appropriate text:
+			title := material.H1(theme, "Test")
+
+			// Change the color of the label.
+			maroon := color.NRGBA{R: 127, G: 20, B: 120, A: 255}
+			title.Color = maroon
+
+			// Change the position of the label.
+			title.Alignment = text.Middle
+
+			// Draw the label to the graphics context.
+			title.Layout(gtx)
+
+			// Pass the drawing operations to the GPU.
+			e.Frame(gtx.Ops)
 		}
 	}
 }
