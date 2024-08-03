@@ -4,16 +4,14 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"image/color"
 	"log"
 	"log/slog"
 	"os"
 
 	"gioui.org/app"
-	"gioui.org/op"
-	"gioui.org/text"
-	"gioui.org/widget/material"
+	"gioui.org/unit"
 	server "github.com/mszalewicz/frosk/backend"
+	"github.com/mszalewicz/frosk/gui"
 	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -66,7 +64,11 @@ func main() {
 
 	go func() {
 		window := new(app.Window)
-		err := run(window)
+		window.Option(app.Title("frosk"))
+		window.Option(app.Size(unit.Dp(800), unit.Dp(600)))
+
+		err := gui.HandleMainWindow(window)
+
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -75,7 +77,7 @@ func main() {
 
 	app.Main()
 
-	// \GUI development --------------------------------------
+	// TODO: Move below logic to window handlers: ---------------------------------------------------------
 
 	localDevLog.Debug("Checking number of entries in master table...")
 	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
@@ -151,34 +153,4 @@ func main() {
 
 	fmt.Printf("Password entry - service name: %s | username: %s | password: %s\n", passwordEntry.ServiceName, passwordEntry.Username, passwordEntry.Password)
 
-}
-
-func run(window *app.Window) error {
-	theme := material.NewTheme()
-	var ops op.Ops
-	for {
-		switch e := window.Event().(type) {
-		case app.DestroyEvent:
-			return e.Err
-		case app.FrameEvent:
-			// This graphics context is used for managing the rendering state.
-			gtx := app.NewContext(&ops, e)
-
-			// Define an large label with an appropriate text:
-			title := material.H1(theme, "Test")
-
-			// Change the color of the label.
-			maroon := color.NRGBA{R: 127, G: 20, B: 120, A: 255}
-			title.Color = maroon
-
-			// Change the position of the label.
-			title.Alignment = text.Middle
-
-			// Draw the label to the graphics context.
-			title.Layout(gtx)
-
-			// Pass the drawing operations to the GPU.
-			e.Frame(gtx.Ops)
-		}
-	}
 }
