@@ -69,7 +69,7 @@ func createPasswordEntryLineComponents(serviceName string, theme *material.Theme
 	return []layout.FlexChild{serviceFlexChild, openBtnFlexChild, deleteBtnFlexChild}
 }
 
-func constructPasswordEntriesList(passwordEntries [][]layout.FlexChild, passwordEntriesList layout.List, margin layout.Inset) layout.FlexChild {
+func constructPasswordEntriesList(passwordEntries [][]layout.FlexChild, passwordEntriesList *layout.List, margin layout.Inset) layout.FlexChild {
 	return layout.Flexed(
 		1,
 		func(gtx layout.Context) layout.Dimensions {
@@ -115,10 +115,9 @@ func HandleMainWindow(window *app.Window) error {
 	var newPasswordEntryWidget widget.Clickable
 	var margin = layout.Inset{Top: unit.Dp(15), Bottom: unit.Dp(15), Left: unit.Dp(15), Right: unit.Dp(15)}
 
-	testServices := []string{"google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
-	fmt.Println(len(testServices))
+	testServices := []string{"google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
 
-	passwordEntriesList := layout.List{Axis: layout.Vertical}
+	passwordEntriesList := &layout.List{Axis: layout.Vertical}
 	passwordEntries := [][]layout.FlexChild{}
 
 	for _, serviceName := range testServices {
