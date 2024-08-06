@@ -66,6 +66,7 @@ func main() {
 		window := new(app.Window)
 		window.Option(app.Title("frosk"))
 		window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
+		window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
 
 		err := gui.HandleMainWindow(window)
 

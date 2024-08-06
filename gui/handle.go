@@ -6,11 +6,13 @@ import (
 	"image/color"
 
 	"gioui.org/app"
+	"gioui.org/font/gofont"
 	"gioui.org/io/system"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
 	"gioui.org/op/paint"
+	"gioui.org/text"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -38,7 +40,11 @@ func createPasswordEntryLineComponents(serviceName string, theme *material.Theme
 			return labelMargin.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return material.Label(theme, unit.Sp(25), serviceName).Layout(gtx)
+
+					serviceNameLabel := material.Label(theme, unit.Sp(25), serviceName)
+					serviceNameLabel.MaxLines = 1
+
+					return serviceNameLabel.Layout(gtx)
 				},
 			)
 		},
@@ -110,12 +116,13 @@ func horizontalSpacer() layout.FlexChild {
 
 func HandleMainWindow(window *app.Window) error {
 	theme := material.NewTheme()
+	theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
 	initialRender := true
 	var ops op.Ops
 	var newPasswordEntryWidget widget.Clickable
 	var margin = layout.Inset{Top: unit.Dp(15), Bottom: unit.Dp(15), Left: unit.Dp(15), Right: unit.Dp(15)}
 
-	testServices := []string{"google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
+	testServices := []string{"super long service name label", "test of language support: część", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
 
 	passwordEntriesList := &layout.List{Axis: layout.Vertical}
 	passwordEntries := [][]layout.FlexChild{}
@@ -128,7 +135,12 @@ func HandleMainWindow(window *app.Window) error {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
 			return e.Err
+
 		case app.FrameEvent:
+
+			// TODO; implement remembering last window size
+			// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
+
 			gtx := app.NewContext(&ops, e)
 
 			if newPasswordEntryWidget.Clicked(gtx) {
