@@ -35,8 +35,6 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(logFile, loggerArgs))
 	slog.SetDefault(logger)
 
-	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
 	// TODO: set db path such that it will much OS native path scheme:
 	// 		Mac:       ~/Library/Applications Support/frosk/application.sqlite
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\application.sqlite
@@ -51,6 +49,8 @@ func main() {
 		fmt.Println(errToHandleInGUI)
 		// TODO implement GUI response
 	}
+
+	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	localDevLog.Debug("Creating database from schema...")
 	errToHandleInGUI = backend.CreateStructure()
@@ -67,8 +67,9 @@ func main() {
 		window.Option(app.Title("frosk"))
 		window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
 		window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
+		window.Option(app.Decorated(false))
 
-		err := gui.HandleMainWindow(window)
+		err := gui.HandleMainWindow(window, backend)
 
 		if err != nil {
 			log.Fatal(err)
@@ -79,25 +80,6 @@ func main() {
 	app.Main()
 
 	// TODO: Move below logic to window handlers: ---------------------------------------------------------
-
-	localDevLog.Debug("Checking number of entries in master table...")
-	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
-
-	if errToHandleInGUI != nil {
-		//TODO : implement GUI response
-		localDevLog.Debug(errToHandleInGUI.Error())
-	}
-
-	if numberOfEntriesInMasterTable == 0 {
-		// TODO: get master password from GUI
-		// TODO: if master password < 1, show appriopriate GUI message
-		localDevLog.Debug("Initializing master table entry...")
-		errToHandleInGUI := backend.InitMaster("placeholder")
-		if errToHandleInGUI != nil {
-			fmt.Println(errToHandleInGUI)
-			// TODO: implement GUI response
-		}
-	}
 
 	serviceName := "google"
 	pass := "supersecretpass"
