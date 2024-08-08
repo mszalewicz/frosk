@@ -3,4 +3,4 @@
 run:
 	rm -f sql/application.sqlite
 	rm -f cmd/log
-	@go run cmd/main.go
+	@go run --tags nowayland cmd/main.go
