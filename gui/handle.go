@@ -63,7 +63,7 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 				func(gtx layout.Context) layout.Dimensions {
 
 					serviceNameLabel := material.Label(theme, unit.Sp(25), serviceName)
-					serviceNameLabel.Font.Weight = font.Bold
+					// serviceNameLabel.Font.Weight = font.Bold
 					serviceNameLabel.MaxLines = 1
 
 					return serviceNameLabel.Layout(gtx)
@@ -313,9 +313,9 @@ InitLoop:
 
 			if time.Since(startTime).Seconds() > 1 {
 				// window.Option(app.Title("frosk"))
-				window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
 				window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
 				window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
+				window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
 				window.Option(app.Decorated(true))
 				// window.Perform(system.ActionCenter)
 				// window.Invalidate()
