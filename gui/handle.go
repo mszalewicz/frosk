@@ -144,6 +144,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	theme := material.NewTheme()
 	theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
 	theme.Bg = color.NRGBA{R: 150, G: 150, B: 150, A: 255}
+	theme.ContrastBg = red
 	// theme.Bg = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 
 	initialRender := true
@@ -182,41 +183,31 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		}
 	}
 
-	// loader := material.Loader(theme)
-	// loader.
-
-	const loadWindowSize = 300
-	window.Option(app.Size(unit.Dp(loadWindowSize*3), unit.Dp(loadWindowSize)))
-	window.Option(app.MaxSize(unit.Dp(loadWindowSize*3), unit.Dp(loadWindowSize)))
-	window.Option(app.MinSize(unit.Dp(loadWindowSize*3), unit.Dp(loadWindowSize)))
-
-	// loaderMargin := layout.Inset{
-	// 	Left:   unit.Dp(30),
-	// 	Right:  unit.Dp(30),
-	// 	Bottom: unit.Dp(30),
-	// 	Top:    unit.Dp(30),
-	// }
-
 	centerWindows := true
 
-	// loadingProgressChan := make(chan float32)
-	// progress := float32(0)
+	ResizeWindowInitialSetup(window)
 
-	// go func() {
-	// 	for {
-	// 		time.Sleep(time.Second / 60)
-	// 		loadingProgressChan <- 0.0055
-	// 	}
-	// }()
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
 
-	// go func() {
-	// 	for p := range loadingProgressChan {
-	// 		if progress < 1 {
-	// 			progress += p
-	// 			window.Invalidate()
-	// 		}
-	// 	}
-	// }()
+		case app.FrameEvent:
+			gtx := app.NewContext(&ops, e)
+
+			paint.Fill(gtx.Ops, grey)
+
+			InitialSetupWidget(&gtx, theme)
+
+			if centerWindows {
+				window.Perform(system.ActionCenter)
+				centerWindows = !centerWindows
+			}
+
+			e.Frame(gtx.Ops)
+
+		}
+	}
 
 	var text string
 	var buttontest widget.Clickable
@@ -292,7 +283,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 		case app.FrameEvent:
 			gtx := app.NewContext(&ops, e)
-			TransformIntoInfoWindow(&gtx, theme, returnBtnWidget, list, &lorem)
+			InfoWindowWidget(&gtx, theme, returnBtnWidget, list, &lorem)
 
 			if !infoCentered {
 				ResizeWindowInfo(window)
