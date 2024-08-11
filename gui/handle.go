@@ -187,6 +187,19 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	ResizeWindowInitialSetup(window)
 
+	passwordInput := new(widget.Editor)
+	passwordInput.SingleLine = true
+	passwordInput.Mask = '*'
+
+	passwordInputRepeat := new(widget.Editor)
+	passwordInputRepeat.SingleLine = true
+	passwordInputRepeat.Mask = '*'
+
+	confirmBtnWidget := new(widget.Clickable)
+	showHideWidget := new(widget.Clickable)
+
+	initialSetup := InitialSetup{passwordInput: *passwordInput, passwordInputRepeat: *passwordInputRepeat, confirmBtnWidget: *confirmBtnWidget, showHidWidget: *showHideWidget}
+
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
@@ -197,7 +210,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 			paint.Fill(gtx.Ops, grey)
 
-			InitialSetupWidget(&gtx, theme)
+			InitialSetupWidget(&gtx, theme, &initialSetup)
 
 			if centerWindows {
 				window.Perform(system.ActionCenter)
