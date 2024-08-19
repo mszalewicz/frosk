@@ -475,3 +475,25 @@ func (backend *Backend) DecryptPasswordEntry(serviceName string, masterPasswordG
 
 	return passwordEntry, nil
 }
+
+func (backend *Backend) GetPasswordEntriesList() ([]string, error) {
+	services := make([]string, 0)
+	service := ""
+
+	query := "SELECT service_name FROM passwords"
+	rows, err := backend.DB.Query(query)
+	if err != nil {
+		errWrapped := fmt.Errorf("Error during getting service names for passwords: %w", err)
+		slog.Error(errWrapped.Error())
+		return nil, errWrapped
+	}
+
+	for rows.Next() {
+		rows.Scan(&service)
+		if len(service) > 0 {
+			services = append(services, service)
+		}
+	}
+
+	return services, nil
+}
