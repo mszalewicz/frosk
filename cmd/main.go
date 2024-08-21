@@ -52,6 +52,7 @@ func main() {
 
 	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
+	// TODO: check if db already created
 	localDevLog.Debug("Creating database from schema...")
 	errToHandleInGUI = backend.CreateStructure()
 
@@ -60,8 +61,7 @@ func main() {
 		// TODO implement GUI response
 	}
 
-	// GUI development ---------------------------------------
-
+	// Start GUI
 	go func() {
 		window := new(app.Window)
 		window.Option(app.Title("frosk"))
@@ -78,8 +78,6 @@ func main() {
 	}()
 
 	app.Main()
-
-	// TODO: Move below logic to window handlers: ---------------------------------------------------------
 
 	serviceName := "google"
 	pass := "supersecretpass"
