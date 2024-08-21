@@ -398,6 +398,42 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 			}
 		}
 
+		ResizeWindowNewPasswordInsert(window)
+		centerWindow = true
+
+		masterPassword := new(widget.Editor)
+		masterPassword.SingleLine = true
+		masterPassword.Mask = '*'
+		masterPassword.Filter = alphabet
+
+		serviceName := new(widget.Editor)
+		serviceName.SingleLine = true
+		serviceName.Mask = '*'
+		serviceName.Filter = alphabet
+
+		username := new(widget.Editor)
+		username.SingleLine = true
+		username.Mask = '*'
+		username.Filter = alphabet
+
+		password := new(widget.Editor)
+		password.SingleLine = true
+		password.Mask = '*'
+		password.Filter = alphabet
+
+		confirmBtnWidget := new(widget.Clickable)
+		showHideWidget := new(widget.Clickable)
+
+		newPasswordView := NewPasswordView{
+			masterPassword:   masterPassword,
+			serviceName:      serviceName,
+			username:         username,
+			password:         password,
+			confirmBtnWidget: confirmBtnWidget,
+			showHidWidget:    showHideWidget,
+			borderColor:      black,
+		}
+
 		// Entry new password
 		for {
 			switch e := window.Event().(type) {
@@ -407,11 +443,30 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 			case app.FrameEvent:
 				gtx := app.NewContext(&ops, e)
 
-				// TODO: Get input for new password entry
+				if showHideWidget.Clicked(gtx) {
+					switch {
+					case newPasswordView.masterPassword.Mask == rune(0):
+						newPasswordView.masterPassword.Mask = '*'
+						newPasswordView.serviceName.Mask = '*'
+						newPasswordView.username.Mask = '*'
+						newPasswordView.password.Mask = '*'
+					default:
+						newPasswordView.masterPassword.Mask = rune(0)
+						newPasswordView.serviceName.Mask = rune(0)
+						newPasswordView.username.Mask = rune(0)
+						newPasswordView.password.Mask = rune(0)
+					}
+				}
+
+				InsertNewPassword(&gtx, theme, &newPasswordView)
+
+				if centerWindow {
+					window.Perform(system.ActionCenter)
+					centerWindow = !centerWindow
+				}
 
 				e.Frame(gtx.Ops)
 			}
 		}
-
 	}
 }
