@@ -23,6 +23,11 @@ import (
 	"gioui.org/widget/material"
 )
 
+type PasswordEntriesGUI struct {
+	serviceName    string
+	guiListElement []layout.FlexChild
+}
+
 // Creates list entry components
 func createPasswordEntryListLineComponents(serviceName string, theme *material.Theme) []layout.FlexChild {
 	const buttonSize = 12
@@ -89,7 +94,7 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 }
 
 // Creastes and populates GUI list container from password entries components
-func constructPasswordEntriesList(passwordEntries [][]layout.FlexChild, passwordEntriesList *layout.List, margin layout.Inset) layout.FlexChild {
+func constructPasswordEntriesList(passwordEntries *[]PasswordEntriesGUI, passwordEntriesList *layout.List, margin layout.Inset) layout.FlexChild {
 	return layout.Flexed(
 		1,
 		func(gtx layout.Context) layout.Dimensions {
@@ -98,13 +103,13 @@ func constructPasswordEntriesList(passwordEntries [][]layout.FlexChild, password
 				func(gtx layout.Context) layout.Dimensions {
 					return passwordEntriesList.Layout(
 						gtx,
-						len(passwordEntries),
+						len(*passwordEntries),
 						func(gtx layout.Context, i int) layout.Dimensions {
 							return layout.Flex{Axis: layout.Vertical}.Layout(
 								gtx,
 								layout.Rigid(
 									func(gtx layout.Context) layout.Dimensions {
-										return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, passwordEntries[i]...)
+										return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, (*passwordEntries)[i].guiListElement...)
 									},
 								),
 								horizontalDivider(),
@@ -129,6 +134,37 @@ func horizontalDivider() layout.FlexChild {
 	)
 }
 
+func errorWindow(ops *op.Ops, window *app.Window, theme *material.Theme, errorMsg string) error {
+	ResizeWindowInfo(window)
+	centerWindow := true
+
+	errConfirmWidget := new(widget.Clickable)
+	errListContainer := &widget.List{List: layout.List{Axis: layout.Vertical, Alignment: layout.Start}}
+
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+
+		case app.FrameEvent:
+			gtx := app.NewContext(ops, e)
+
+			if errConfirmWidget.Clicked(gtx) {
+				os.Exit(0)
+			}
+
+			InfoWindowWidget(&gtx, theme, errConfirmWidget, errListContainer, errorMsg)
+
+			if centerWindow {
+				window.Perform(system.ActionCenter)
+				centerWindow = !centerWindow
+			}
+
+			e.Frame(gtx.Ops)
+		}
+	}
+}
+
 func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	errChan := make(chan error)
 
@@ -144,14 +180,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	var ops op.Ops
 	var newPasswordEntryWidget widget.Clickable
 
-	testServices := []string{"super long service name label", "test of language support: część", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
-
-	passwordEntriesList := &layout.List{Axis: layout.Vertical}
-	passwordEntries := [][]layout.FlexChild{}
-
-	for _, serviceName := range testServices {
-		passwordEntries = append(passwordEntries, createPasswordEntryListLineComponents(serviceName, theme))
-	}
+	// testServices := []string{"super long service name label", "test of language support: część", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
 
 	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
@@ -264,6 +293,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		errOccured := false
 
 		// Show loader during master password save action
+
 	InitialLoadMarker:
 		for {
 			switch e := window.Event().(type) {
@@ -297,34 +327,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 		// Handle master password save error
 		if errOccured {
-			ResizeWindowInfo(window)
-			centerWindow = true
-
-			errConfirmWidget := new(widget.Clickable)
-			errListContainer := &widget.List{List: layout.List{Axis: layout.Vertical, Alignment: layout.Start}}
-
-			for {
-				switch e := window.Event().(type) {
-				case app.DestroyEvent:
-					return e.Err
-
-				case app.FrameEvent:
-					gtx := app.NewContext(&ops, e)
-
-					if errConfirmWidget.Clicked(gtx) {
-						os.Exit(0)
-					}
-
-					InfoWindowWidget(&gtx, theme, errConfirmWidget, errListContainer, "Error during saving master password.")
-
-					if centerWindow {
-						window.Perform(system.ActionCenter)
-						centerWindow = !centerWindow
-					}
-
-					e.Frame(gtx.Ops)
-				}
-			}
+			errorWindow(&ops, window, theme, "Error during saving master password.")
 		}
 	}
 
@@ -501,52 +504,88 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	// progressCircle.Color = color.NRGBA{}
 	// progressCircle.Layout(gtx)
 
-	ResizeWindowPasswordEntriesList(window)
 	centerWindow = true
 
 	for {
-		switch e := window.Event().(type) {
-		case app.DestroyEvent:
-			return e.Err
+		services, err := backend.GetPasswordEntriesList()
 
-		case app.FrameEvent:
+		if err != nil {
+			errorWindow(&ops, window, theme, "Could not load password entries.")
+		}
 
-			// TODO; implement remembering last window size
-			// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
+		passwordEntriesList := &layout.List{Axis: layout.Vertical}
+		passwordEntries := []PasswordEntriesGUI{}
+		fmt.Println(services)
 
-			gtx := app.NewContext(&ops, e)
+		for _, serviceName := range services {
+			listElement := createPasswordEntryListLineComponents(serviceName, theme)
+			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement})
+		}
 
-			if newPasswordEntryWidget.Clicked(gtx) {
-				fmt.Println("test")
-			}
+		ResizeWindowPasswordEntriesList(window)
 
-			layout.Flex{
-				Axis:    layout.Vertical,
-				Spacing: layout.SpaceStart,
-			}.Layout(
-				gtx,
-				constructPasswordEntriesList(passwordEntries, passwordEntriesList, margin),
-				layout.Rigid(
-					func(gtx layout.Context) layout.Dimensions {
-						return margin.Layout(gtx,
-							func(gtx layout.Context) layout.Dimensions {
-								newPasswordEntry := material.Button(theme, &newPasswordEntryWidget, "NEW")
-								newPasswordEntry.Background = color.NRGBA{R: 30, G: 30, B: 30, A: 255}
-								newPasswordEntry.TextSize = unit.Sp(25)
-								newPasswordEntry.Font.Weight = font.Bold
-								return newPasswordEntry.Layout(gtx)
-							},
-						)
-					},
-				),
-			)
+	ShowListMarker:
+		for {
+			switch e := window.Event().(type) {
+			case app.DestroyEvent:
+				return e.Err
 
-			e.Frame(gtx.Ops)
+			case app.FrameEvent:
 
-			if centerWindow {
-				window.Perform(system.ActionCenter)
-				centerWindow = !centerWindow
+				// TODO; implement remembering last window size
+				// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
+
+				gtx := app.NewContext(&ops, e)
+
+				if newPasswordEntryWidget.Clicked(gtx) {
+					fmt.Println("test")
+					break ShowListMarker
+				}
+
+				layout.Flex{
+					Axis:    layout.Vertical,
+					Spacing: layout.SpaceStart,
+				}.Layout(
+					gtx,
+					constructPasswordEntriesList(&passwordEntries, passwordEntriesList, margin),
+					layout.Rigid(
+						func(gtx layout.Context) layout.Dimensions {
+							return margin.Layout(gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									newPasswordEntry := material.Button(theme, &newPasswordEntryWidget, "NEW")
+									newPasswordEntry.Background = color.NRGBA{R: 30, G: 30, B: 30, A: 255}
+									newPasswordEntry.TextSize = unit.Sp(25)
+									newPasswordEntry.Font.Weight = font.Bold
+									return newPasswordEntry.Layout(gtx)
+								},
+							)
+						},
+					),
+				)
+
+				e.Frame(gtx.Ops)
+
+				if centerWindow {
+					window.Perform(system.ActionCenter)
+					centerWindow = !centerWindow
+				}
 			}
 		}
+
+		// Entry new password
+		for {
+			switch e := window.Event().(type) {
+			case app.DestroyEvent:
+				return e.Err
+
+			case app.FrameEvent:
+				gtx := app.NewContext(&ops, e)
+
+				// TODO: Get input for new password entry
+
+				e.Frame(gtx.Ops)
+			}
+		}
+
 	}
 }
