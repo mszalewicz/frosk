@@ -1,11 +1,15 @@
 package gui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"log/slog"
 	"os"
+	"strconv"
+	"time"
 
 	server "github.com/mszalewicz/frosk/backend"
 
@@ -182,13 +186,10 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	// testServices := []string{"super long service name label", "test of language support: część", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
 
-	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
-	localDevLog.Debug("Checking number of entries in master table...")
 	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
 
 	if errToHandleInGUI != nil {
-		localDevLog.Debug(errToHandleInGUI.Error())
+		errorWindow(&ops, window, theme, "Fatal error when running application. Please consult logs.")
 	}
 
 	centerWindow := true
@@ -216,8 +217,19 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		borderColor:         black,
 	}
 
+	firstTimeShowingInitialSetupWindow := true
+
 	// Get master password info during firt use of application
 	if numberOfEntriesInMasterTable == 0 {
+		if firstTimeShowingInitialSetupWindow {
+			go func() {
+				time.Sleep(time.Second / 20)
+				window.Invalidate()
+				return
+			}()
+			firstTimeShowingInitialSetupWindow = !firstTimeShowingInitialSetupWindow
+		}
+
 	InitialSetupWindowMarker:
 		for {
 			switch e := window.Event().(type) {
@@ -244,8 +256,6 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 					switch {
 					case passwordInput.Len() > 0 && passwordInputRepeat.Len() > 0:
 						if passwordInput.Text() == passwordInputRepeat.Text() {
-							localDevLog.Debug("Checking number of entries in master table...")
-
 							go func() {
 								err := backend.InitMaster(passwordInput.Text())
 								errChan <- err
@@ -331,6 +341,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	}
 
 	centerWindow = true
+	firstTimeShowing := true
 
 	for {
 		services, err := backend.GetPasswordEntriesList()
@@ -341,11 +352,21 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 		passwordEntriesList := &layout.List{Axis: layout.Vertical}
 		passwordEntries := []PasswordEntriesGUI{}
-		fmt.Println(services)
 
 		for _, serviceName := range services {
 			listElement := createPasswordEntryListLineComponents(serviceName, theme)
 			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement})
+		}
+
+		// Schedule invalidate in seperate gorotuine to redraw window after initial show.
+		// For some reason gio do not paint correct layout / elements sizes on the first show after centering.
+		if firstTimeShowing {
+			go func() {
+				time.Sleep(time.Second / 20)
+				window.Invalidate()
+				return
+			}()
+			firstTimeShowing = !firstTimeShowing
 		}
 
 		ResizeWindowPasswordEntriesList(window)
@@ -357,14 +378,12 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 				return e.Err
 
 			case app.FrameEvent:
-
 				// TODO; implement remembering last window size
 				// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
 
 				gtx := app.NewContext(&ops, e)
 
 				if newPasswordEntryWidget.Clicked(gtx) {
-					fmt.Println("test")
 					break ShowListMarker
 				}
 
@@ -389,84 +408,229 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 					),
 				)
 
-				e.Frame(gtx.Ops)
-
 				if centerWindow {
 					window.Perform(system.ActionCenter)
 					centerWindow = !centerWindow
 				}
+
+				e.Frame(gtx.Ops)
 			}
 		}
 
-		ResizeWindowNewPasswordInsert(window)
-		centerWindow = true
+		err = InputNewPassword(window, &ops, backend, theme)
 
-		masterPassword := new(widget.Editor)
-		masterPassword.SingleLine = true
-		masterPassword.Mask = '*'
-		masterPassword.Filter = alphabet
-
-		serviceName := new(widget.Editor)
-		serviceName.SingleLine = true
-		serviceName.Mask = '*'
-		serviceName.Filter = alphabet
-
-		username := new(widget.Editor)
-		username.SingleLine = true
-		username.Mask = '*'
-		username.Filter = alphabet
-
-		password := new(widget.Editor)
-		password.SingleLine = true
-		password.Mask = '*'
-		password.Filter = alphabet
-
-		confirmBtnWidget := new(widget.Clickable)
-		showHideWidget := new(widget.Clickable)
-
-		newPasswordView := NewPasswordView{
-			masterPassword:   masterPassword,
-			serviceName:      serviceName,
-			username:         username,
-			password:         password,
-			confirmBtnWidget: confirmBtnWidget,
-			showHidWidget:    showHideWidget,
-			borderColor:      black,
+		if err != nil {
+			errorWindow(&ops, window, theme, "Error occured during password saving. Please check logs.")
 		}
 
-		// Entry new password
+		centerWindow = true
+	}
+}
+
+type Information struct {
+	text  string
+	color color.NRGBA
+}
+
+func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, theme *material.Theme) error {
+	var centerWindow bool = true
+	var inserted bool = true
+
+	ResizeWindowNewPasswordInsert(window)
+
+	masterPassword := new(widget.Editor)
+	masterPassword.SingleLine = true
+	masterPassword.Mask = '*'
+	masterPassword.Filter = alphabet
+
+	serviceName := new(widget.Editor)
+	serviceName.SingleLine = true
+	serviceName.Mask = '*'
+	serviceName.Filter = alphabet
+
+	username := new(widget.Editor)
+	username.SingleLine = true
+	username.Mask = '*'
+	username.Filter = alphabet
+
+	password := new(widget.Editor)
+	password.SingleLine = true
+	password.Mask = '*'
+	password.Filter = alphabet
+
+	confirmBtnWidget := new(widget.Clickable)
+	showHideWidget := new(widget.Clickable)
+
+	newPasswordView := NewPasswordView{
+		masterPassword:   masterPassword,
+		serviceName:      serviceName,
+		username:         username,
+		password:         password,
+		confirmBtnWidget: confirmBtnWidget,
+		showHidWidget:    showHideWidget,
+		borderColor:      black,
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	passwordLength := ""
+	countLetterChan := make(chan int)
+
+	go func(ctx context.Context) {
 		for {
-			switch e := window.Event().(type) {
-			case app.DestroyEvent:
-				return e.Err
+			select {
+			case <-ctx.Done():
+				return
+			default:
+			}
 
-			case app.FrameEvent:
-				gtx := app.NewContext(&ops, e)
+			countLetterChan <- newPasswordView.password.Len()
+			time.Sleep(time.Second / 8)
+		}
+	}(ctx)
 
-				if showHideWidget.Clicked(gtx) {
-					switch {
-					case newPasswordView.masterPassword.Mask == rune(0):
-						newPasswordView.masterPassword.Mask = '*'
-						newPasswordView.serviceName.Mask = '*'
-						newPasswordView.username.Mask = '*'
-						newPasswordView.password.Mask = '*'
+	info := Information{"Provide Master Password to authenticate. Fill out form to save password for a service.", purple}
+	tryingToInsertPassword := false
+
+	type InsertPasswordEntryOperation struct {
+		error     error
+		didInsert bool
+		msg       string
+	}
+
+	insertPasswordOperationChan := make(chan InsertPasswordEntryOperation)
+
+	// Draw
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return e.Err
+
+		case app.FrameEvent:
+			gtx := app.NewContext(ops, e)
+
+			select {
+			case insertOperation := <-insertPasswordOperationChan:
+				if insertOperation.error != nil {
+					switch err := insertOperation.error; {
+					case errors.Is(err, server.ServiceNameAlreadyTaken), errors.Is(err, server.MasterPasswordDoNotMatch):
+						info.text = insertOperation.msg
+						info.color = red
+						tryingToInsertPassword = false
+						ResizeWindowNewPasswordInsert(window)
+						window.Perform(system.ActionCenter)
 					default:
-						newPasswordView.masterPassword.Mask = rune(0)
-						newPasswordView.serviceName.Mask = rune(0)
-						newPasswordView.username.Mask = rune(0)
-						newPasswordView.password.Mask = rune(0)
+						return err
 					}
 				}
+				if insertOperation.didInsert {
+					return nil
+				}
+			default:
+			}
 
-				InsertNewPassword(&gtx, theme, &newPasswordView)
+		CheckConfirmButtonClickMarker:
+			if confirmBtnWidget.Clicked(gtx) {
+				info.text = ""
+				inputProblem := false
 
-				if centerWindow {
-					window.Perform(system.ActionCenter)
-					centerWindow = !centerWindow
+				if len(newPasswordView.masterPassword.Text()) == 0 {
+					info.text += "Master Password is empty. "
+					info.color = red
+					inputProblem = true
+				}
+				if len(newPasswordView.username.Text()) == 0 {
+					info.text += "Username is empty. "
+					info.color = red
+					inputProblem = true
+				}
+				if len(newPasswordView.serviceName.Text()) == 0 {
+					info.text += "Service name is empty. "
+					info.color = red
+					inputProblem = true
+				}
+				if len(newPasswordView.password.Text()) == 0 {
+					info.text += "Password is empty. "
+					info.color = red
+					inputProblem = true
 				}
 
-				e.Frame(gtx.Ops)
+				if inputProblem {
+					goto CheckConfirmButtonClickMarker
+				}
+
+				go func() {
+					masterPasswordMatch, err := backend.CmpMasterPassword(newPasswordView.masterPassword.Text())
+
+					if !masterPasswordMatch && err == nil {
+						insertPasswordOperationChan <- InsertPasswordEntryOperation{server.MasterPasswordDoNotMatch, !inserted, "Master Password is incorrect."}
+						return
+					}
+
+					if err != nil {
+						fmt.Println("wut")
+					}
+
+					err = backend.EncryptPasswordEntry(
+						newPasswordView.serviceName.Text(),
+						newPasswordView.password.Text(),
+						newPasswordView.username.Text(),
+						newPasswordView.masterPassword.Text(),
+					)
+
+					if err != nil {
+						if errors.Is(err, server.ServiceNameAlreadyTaken) {
+							insertPasswordOperationChan <- InsertPasswordEntryOperation{err, !inserted, "Service name is already taken. Choose another name."}
+						} else {
+							insertPasswordOperationChan <- InsertPasswordEntryOperation{err, !inserted, "Unspecified error occured. Check error description."}
+						}
+						return
+					}
+
+					insertPasswordOperationChan <- InsertPasswordEntryOperation{nil, inserted, ""}
+				}()
+
+				tryingToInsertPassword = true
+				ResizeWindowLoad(window)
+				window.Perform(system.ActionCenter)
 			}
+
+			if showHideWidget.Clicked(gtx) {
+				switch {
+				case newPasswordView.masterPassword.Mask == rune(0):
+					newPasswordView.masterPassword.Mask = '*'
+					newPasswordView.serviceName.Mask = '*'
+					newPasswordView.username.Mask = '*'
+					newPasswordView.password.Mask = '*'
+				default:
+					newPasswordView.masterPassword.Mask = rune(0)
+					newPasswordView.serviceName.Mask = rune(0)
+					newPasswordView.username.Mask = rune(0)
+					newPasswordView.password.Mask = rune(0)
+				}
+			}
+
+			select {
+			case count := <-countLetterChan:
+				passwordLength = strconv.Itoa(count)
+			default:
+			}
+
+			window.Invalidate()
+
+			if tryingToInsertPassword {
+				LoadWidget(&gtx, theme)
+			} else {
+				InsertNewPasswordWidget(&gtx, theme, &newPasswordView, passwordLength, info)
+			}
+
+			if centerWindow {
+				window.Perform(system.ActionCenter)
+				centerWindow = !centerWindow
+			}
+
+			e.Frame(gtx.Ops)
 		}
 	}
 }

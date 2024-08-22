@@ -22,9 +22,10 @@ import (
 var EmptyPassword = errors.New("No password given to insert.")
 var EmptyUsername = errors.New("No username name given to insert.")
 var EmptyServiceName = errors.New("No service name given to insert.")
-var EmptyMasterPassord = errors.New("No master passwrod given to compare.")
+var EmptyMasterPassword = errors.New("No master passwrod given to compare.")
 var ServiceNameNotFound = errors.New("Provided service name is not present in database.")
 var ServiceNameAlreadyTaken = errors.New("Provided service name is already present in database.")
+var MasterPasswordDoNotMatch = errors.New("Provided master password do not match database.")
 
 type Backend struct {
 	DB *sql.DB
@@ -73,7 +74,7 @@ func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, erro
 	)
 
 	if len(masterPasswordGUI) == 0 {
-		return userSecretKey, EmptyMasterPassord
+		return userSecretKey, EmptyMasterPassword
 	}
 
 	row := backend.DB.QueryRow("SELECT \"password\", secret_key, salt, initial_vector FROM master")
@@ -232,7 +233,7 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 	//     user secret key             -> used in encryption of user stored passwords
 
 	if len(masterPassword) == 0 {
-		return EmptyMasterPassord
+		return EmptyMasterPassword
 	}
 
 	helpers.AssertBigger(len(masterPassword), 0)
@@ -324,6 +325,42 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 	return nil
 }
 
+func (backend *Backend) CmpMasterPassword(masterPasswordGUI string) (bool, error) {
+	var masterPasswordHashedBase64 string
+	var masterPasswordHashed []byte
+	var masterPasswordMatch bool = true
+
+	query := "SELECT password FROM master"
+	row := backend.DB.QueryRow(query)
+	err := row.Scan(&masterPasswordHashedBase64)
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Could not get master password from db with select: %w", err)
+		slog.Error(errWrapped.Error())
+		return false, errWrapped
+	}
+
+	masterPasswordHashed, err = b64.StdEncoding.DecodeString(masterPasswordHashedBase64)
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Could not decode master password: %w", err)
+		slog.Error(errWrapped.Error())
+		return false, errWrapped
+	}
+
+	err = bcrypt.CompareHashAndPassword(masterPasswordHashed, []byte(masterPasswordGUI))
+
+	if err == bcrypt.ErrMismatchedHashAndPassword {
+		return !masterPasswordMatch, nil
+	} else if err != nil {
+		errWrapped := fmt.Errorf("Error during comparing master password: %w", err)
+		slog.Error(errWrapped.Error())
+		return false, errWrapped
+	} else {
+		return masterPasswordMatch, nil
+	}
+}
+
 // Inserts encrypted password and username for given service name
 func (backend *Backend) EncryptPasswordEntry(serviceName string, password string, username string, masterPasswordGUI string) error {
 
@@ -336,7 +373,7 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 	}
 
 	if len(masterPasswordGUI) == 0 {
-		return EmptyMasterPassord
+		return EmptyMasterPassword
 	}
 
 	if len(username) == 0 {

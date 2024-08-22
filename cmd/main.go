@@ -53,7 +53,7 @@ func main() {
 	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	// TODO: check if db already created
-	localDevLog.Debug("Creating database from schema...")
+	localDevLog.Debug("Create database from schema if not present...")
 	errToHandleInGUI = backend.CreateStructure()
 
 	if errToHandleInGUI != nil {
@@ -79,41 +79,9 @@ func main() {
 
 	app.Main()
 
+	// TODO: Get below functionality to the hangle.go
 	serviceName := "google"
-	pass := "supersecretpass"
-	username := "bestestuser"
 	masterpass := "placeholder"
-
-	errToHandleInGUI = backend.EncryptPasswordEntry("test", "test", "test", masterpass) // TODO: get info from GUI
-
-	localDevLog.Debug("Creating password entry...")
-	errToHandleInGUI = backend.EncryptPasswordEntry(serviceName, pass, username, masterpass) // TODO: get info from GUI
-
-	if errToHandleInGUI != nil {
-		switch {
-		case errors.Is(errToHandleInGUI, server.EmptyPassword):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, server.EmptyUsername):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, server.EmptyServiceName):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, server.EmptyMasterPassord):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, server.ServiceNameAlreadyTaken):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, bcrypt.ErrMismatchedHashAndPassword): // Check for authentication
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		default:
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		}
-	}
 
 	localDevLog.Debug("Getting password entry...")
 	passwordEntry, errToHandleInGUI := backend.DecryptPasswordEntry(serviceName, masterpass)
