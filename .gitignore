@@ -27,3 +27,6 @@ go.work.sum
 # Application runtime files
 *.sqlite
 /cmd/log
+
+# Compiled binaries
+/bin
