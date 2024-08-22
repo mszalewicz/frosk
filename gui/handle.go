@@ -358,16 +358,14 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement})
 		}
 
-		// Schedule invalidate in seperate gorotuine to redraw window after initial show.
-		// For some reason gio do not paint correct layout / elements sizes on the first show after centering.
-		if firstTimeShowing {
-			go func() {
-				time.Sleep(time.Second / 20)
-				window.Invalidate()
-				return
-			}()
-			firstTimeShowing = !firstTimeShowing
-		}
+		// Schedule invalidate in seperate gorotuine to redraw window after initial show after resizing + centering.
+		// For some reason gio do not paint correct layout / elements sizes on the first show after resizing + centering.
+		go func() {
+			time.Sleep(time.Second / 20)
+			window.Invalidate()
+			return
+		}()
+		firstTimeShowing = !firstTimeShowing
 
 		ResizeWindowPasswordEntriesList(window)
 

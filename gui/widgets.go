@@ -30,6 +30,7 @@ func ResizeWindowInfo(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(450), unit.Dp(450)))
 	window.Option(app.Size(unit.Dp(450), unit.Dp(450)))
+	window.Option(app.Title("frosk"))
 }
 
 func InfoWindowWidget(gtx *layout.Context, theme *material.Theme, returnBtnWidget *widget.Clickable, list *widget.List, text string) {
@@ -69,6 +70,7 @@ func ResizeWindowInitialSetup(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
 	window.Option(app.Size(unit.Dp(850), unit.Dp(850)))
+	window.Option(app.Title("frosk"))
 }
 
 type InitialSetup struct {
@@ -236,13 +238,15 @@ func ResizeWindowPasswordEntriesList(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(1_000), unit.Dp(1_000)))
 	window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
+	window.Option(app.Title("frosk"))
 }
 
 func ResizeWindowNewPasswordInsert(window *app.Window) {
 	window.Option(app.Decorated(true))
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
-	window.Option(app.Size(unit.Dp(800), unit.Dp(1_000)))
+	window.Option(app.Size(unit.Dp(750), unit.Dp(800)))
+	window.Option(app.Title("frosk"))
 }
 
 type NewPasswordView struct {
@@ -258,8 +262,9 @@ type NewPasswordView struct {
 }
 
 func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPasswordView *NewPasswordView, passwordLength string, info Information) {
-	elementMargin := layout.Inset{Top: unit.Dp(17), Bottom: unit.Dp(17), Right: unit.Dp(10), Left: unit.Dp(10)}
-	btnsMargin := layout.Inset{Top: unit.Dp(25), Bottom: unit.Dp(25), Right: unit.Dp(10), Left: unit.Dp(10)}
+	elementMargin := layout.Inset{Top: unit.Dp(13), Bottom: unit.Dp(13), Right: unit.Dp(10), Left: unit.Dp(10)}
+	btnsMargin := layout.Inset{Top: unit.Dp(20), Bottom: unit.Dp(20), Right: unit.Dp(10), Left: unit.Dp(10)}
+	appTextSize := unit.Sp(15)
 
 	layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(60), Right: unit.Dp(60)}.Layout(
 		*gtx,
@@ -273,7 +278,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 							func(gtx layout.Context) layout.Dimensions {
 								return layout.Flex{Axis: layout.Horizontal, Spacing: layout.SpaceSides}.Layout(
 									gtx,
-									layout.Rigid(func(gtx layout.Context) layout.Dimensions { return material.H2(theme, "New Password").Layout(gtx) }),
+									layout.Rigid(func(gtx layout.Context) layout.Dimensions { return material.H3(theme, "New Password").Layout(gtx) }),
 								)
 							},
 						)
@@ -284,7 +289,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 						return elementMargin.Layout(
 							gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								label := material.Label(theme, unit.Sp(20), info.text)
+								label := material.Label(theme, appTextSize, info.text)
 								label.Color = info.color
 								label.Font.Weight = font.Bold
 								return label.Layout(gtx)
@@ -305,7 +310,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
 							inputMasterPassword := material.Editor(theme, newPasswordView.masterPassword, "Master Password")
-							inputMasterPassword.TextSize = unit.Sp(20)
+							inputMasterPassword.TextSize = appTextSize
 							inputMasterPassword.SelectionColor = blue
 							border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
@@ -328,7 +333,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.serviceName, "Name")
-							inputMasterPasswordRepeat.TextSize = unit.Sp(20)
+							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
 							border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
@@ -351,7 +356,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.username, "Username")
-							inputMasterPasswordRepeat.TextSize = unit.Sp(20)
+							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
 							border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
@@ -374,7 +379,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.password, "Password")
-							inputMasterPasswordRepeat.TextSize = unit.Sp(20)
+							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
 							border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
@@ -398,7 +403,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 												func(gtx layout.Context) layout.Dimensions {
 													confirmBtn := material.Button(theme, newPasswordView.confirmBtnWidget, "CONFIRM")
 													confirmBtn.Background = green
-													confirmBtn.TextSize = unit.Sp(25)
+													confirmBtn.TextSize = appTextSize
 													confirmBtn.Font.Weight = font.Bold
 													return confirmBtn.Layout(gtx)
 												},
@@ -412,7 +417,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 												func(gtx layout.Context) layout.Dimensions {
 													confirmBtn := material.Button(theme, newPasswordView.showHidWidget, "SHOW/HIDE")
 													confirmBtn.Background = color.NRGBA{R: 30, G: 30, B: 30, A: 255}
-													confirmBtn.TextSize = unit.Sp(25)
+													confirmBtn.TextSize = appTextSize
 													confirmBtn.Font.Weight = font.Bold
 													return confirmBtn.Layout(gtx)
 												},
