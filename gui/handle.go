@@ -342,7 +342,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		}
 	}
 
-	refreshChan := make(chan bool)
+	refreshChan := make(chan bool, 1)
 
 PasswordViewMarker:
 	for {
@@ -394,7 +394,6 @@ PasswordViewMarker:
 
 					if passwordEntryInfo.openBtnWidget.Clicked(gtx) {
 						// TODO: open password window
-						fmt.Println("open clicked service name :: ", passwordEntryInfo.serviceName)
 					}
 
 					if passwordEntryInfo.deleteBtnWidget.Clicked(gtx) {
@@ -444,7 +443,7 @@ PasswordViewMarker:
 	}
 }
 
-func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName string, refreshChan chan bool) error {
+func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName string, refreshChan chan bool) {
 	var (
 		deletePasswordEntry bool = true
 		centerWindow        bool = true
@@ -468,11 +467,14 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 		return
 	}()
 
+	// refreshChan <- true
+
 	{ // Window loop
 		for {
 			switch e := window.Event().(type) {
 			case app.DestroyEvent:
-				return e.Err
+				// return e.Err
+				return
 
 			case app.FrameEvent:
 				gtx := app.NewContext(ops, e)
@@ -484,13 +486,13 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 							errWrapped := fmt.Errorf("Error during deletion of password: %w", err)
 							slog.Error(errWrapped.Error())
 						}
-						// TODO: check why it freezes
 						refreshChan <- deletePasswordEntry
 						window.Perform(system.ActionClose)
 					}
 
 					if deny.Clicked(gtx) {
 						window.Perform(system.ActionClose)
+						// return
 					}
 				}
 
