@@ -28,12 +28,14 @@ import (
 )
 
 type PasswordEntriesGUI struct {
-	serviceName    string
-	guiListElement []layout.FlexChild
+	serviceName     string
+	guiListElement  []layout.FlexChild
+	openBtnWidget   *widget.Clickable
+	deleteBtnWidget *widget.Clickable
 }
 
 // Creates list entry components
-func createPasswordEntryListLineComponents(serviceName string, theme *material.Theme) []layout.FlexChild {
+func createPasswordEntryListLineComponents(serviceName string, theme *material.Theme) ([]layout.FlexChild, *widget.Clickable, *widget.Clickable) {
 	const buttonSize = 12
 
 	var openBtnWidget widget.Clickable
@@ -94,7 +96,7 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 		},
 	)
 
-	return []layout.FlexChild{serviceFlexChild, openBtnFlexChild, deleteBtnFlexChild}
+	return []layout.FlexChild{serviceFlexChild, openBtnFlexChild, deleteBtnFlexChild}, &openBtnWidget, &deleteBtnWidget
 }
 
 // Creastes and populates GUI list container from password entries components
@@ -340,10 +342,11 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		}
 	}
 
-	centerWindow = true
-	firstTimeShowing := true
+	refreshChan := make(chan bool)
 
+PasswordViewMarker:
 	for {
+		centerWindow = true
 		services, err := backend.GetPasswordEntriesList()
 
 		if err != nil {
@@ -351,21 +354,20 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		}
 
 		passwordEntriesList := &layout.List{Axis: layout.Vertical}
-		passwordEntries := []PasswordEntriesGUI{}
+		passwordEntries := make([]PasswordEntriesGUI, 0, len(services))
 
 		for _, serviceName := range services {
-			listElement := createPasswordEntryListLineComponents(serviceName, theme)
-			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement})
+			listElement, openBtnWidget, deleteBtnWidget := createPasswordEntryListLineComponents(serviceName, theme)
+			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement, openBtnWidget: openBtnWidget, deleteBtnWidget: deleteBtnWidget})
 		}
 
 		// Schedule invalidate in seperate gorotuine to redraw window after initial show after resizing + centering.
 		// For some reason gio do not paint correct layout / elements sizes on the first show after resizing + centering.
 		go func() {
-			time.Sleep(time.Second / 20)
+			time.Sleep(time.Second / 10)
 			window.Invalidate()
 			return
 		}()
-		firstTimeShowing = !firstTimeShowing
 
 		ResizeWindowPasswordEntriesList(window)
 
@@ -380,6 +382,25 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 				// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
 
 				gtx := app.NewContext(&ops, e)
+
+				select {
+				case shouldRefresh := <-refreshChan:
+					_ = shouldRefresh
+					goto PasswordViewMarker
+				default:
+				}
+
+				for _, passwordEntryInfo := range passwordEntries {
+
+					if passwordEntryInfo.openBtnWidget.Clicked(gtx) {
+						// TODO: open password window
+						fmt.Println("open clicked service name :: ", passwordEntryInfo.serviceName)
+					}
+
+					if passwordEntryInfo.deleteBtnWidget.Clicked(gtx) {
+						go confirmDeletion(backend, theme, passwordEntryInfo.serviceName, refreshChan)
+					}
+				}
 
 				if newPasswordEntryWidget.Clicked(gtx) {
 					break ShowListMarker
@@ -420,9 +441,75 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		if err != nil {
 			errorWindow(&ops, window, theme, "Error occured during password saving. Please check logs.")
 		}
-
-		centerWindow = true
 	}
+}
+
+func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName string, refreshChan chan bool) error {
+	var (
+		deletePasswordEntry bool = true
+		centerWindow        bool = true
+		confirm             widget.Clickable
+		deny                widget.Clickable
+		maxW                unit.Dp = 650
+		maxH                unit.Dp = 350
+	)
+
+	ops := new(op.Ops)
+	window := new(app.Window)
+	window.Option(app.Decorated(true))
+	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.MaxSize(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.Title("frosk"))
+
+	go func() {
+		time.Sleep(time.Second / 20)
+		window.Invalidate()
+		return
+	}()
+
+	{ // Window loop
+		for {
+			switch e := window.Event().(type) {
+			case app.DestroyEvent:
+				return e.Err
+
+			case app.FrameEvent:
+				gtx := app.NewContext(ops, e)
+
+				{ // Choice whether to delete password or not
+					if confirm.Clicked(gtx) {
+						err := backend.DeletePasswordEntry(serviceName)
+						if err != nil {
+							errWrapped := fmt.Errorf("Error during deletion of password: %w", err)
+							slog.Error(errWrapped.Error())
+						}
+						// TODO: check why it freezes
+						refreshChan <- deletePasswordEntry
+						window.Perform(system.ActionClose)
+					}
+
+					if deny.Clicked(gtx) {
+						window.Perform(system.ActionClose)
+					}
+				}
+
+				{ // Paint
+					paint.Fill(ops, black)
+					ConfirmPasswordDeletion(&gtx, theme, serviceName, &confirm, &deny)
+
+					if centerWindow {
+						window.Perform(system.ActionCenter)
+						centerWindow = !centerWindow
+					}
+
+					e.Frame(gtx.Ops)
+				}
+
+			}
+		}
+	}
+
 }
 
 type Information struct {
@@ -567,7 +654,7 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 					}
 
 					if err != nil {
-						fmt.Println("wut")
+						// TODO: check if there are other types of errors and manage in GUI
 					}
 
 					err = backend.EncryptPasswordEntry(

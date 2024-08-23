@@ -26,6 +26,8 @@ var EmptyMasterPassword = errors.New("No master passwrod given to compare.")
 var ServiceNameNotFound = errors.New("Provided service name is not present in database.")
 var ServiceNameAlreadyTaken = errors.New("Provided service name is already present in database.")
 var MasterPasswordDoNotMatch = errors.New("Provided master password do not match database.")
+var NoRowsDeleted = errors.New("Query did not delete any rows.")
+var DeletedMoreRowsThenExpected = errors.New("Query deleted more rows then expected.")
 
 type Backend struct {
 	DB *sql.DB
@@ -533,4 +535,32 @@ func (backend *Backend) GetPasswordEntriesList() ([]string, error) {
 	}
 
 	return services, nil
+}
+
+func (backend *Backend) DeletePasswordEntry(serviceName string) error {
+	result, err := backend.DB.Exec("DELETE FROM passwords WHERE service_name = ?", serviceName)
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Error during deletion of given password entry in db: %w", err)
+		slog.Error(errWrapped.Error())
+		return errWrapped
+	}
+
+	affectedRows, err := result.RowsAffected()
+
+	if err != nil {
+		errWrapped := fmt.Errorf("Error during deletion of given password entry in db: %w", err)
+		slog.Error(errWrapped.Error())
+		return errWrapped
+	}
+
+	if affectedRows == 0 {
+		return NoRowsDeleted
+	}
+
+	if affectedRows > 1 {
+		return DeletedMoreRowsThenExpected
+	}
+
+	return nil
 }

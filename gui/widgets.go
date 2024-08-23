@@ -20,6 +20,7 @@ var (
 	orange   = color.NRGBA{R: 235, G: 178, B: 10, A: 100}
 	purple   = color.NRGBA{R: 161, G: 100, B: 196, A: 255}
 	red      = color.NRGBA{R: 238, G: 78, B: 78, A: 255}
+	white    = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	textSize = unit.Sp(30)
 )
 
@@ -432,4 +433,65 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 			)
 		},
 	)
+}
+
+func ConfirmPasswordDeletion(gtx *layout.Context, theme *material.Theme, serviceName string, confirm *widget.Clickable, deny *widget.Clickable) {
+	var (
+		textSize    unit.Sp      = 30
+		btnMargin   layout.Inset = layout.Inset{Top: unit.Dp(20), Bottom: unit.Dp(20), Right: unit.Dp(25), Left: unit.Dp(25)}
+		labelMargin layout.Inset = layout.Inset{Top: unit.Dp(25), Bottom: unit.Dp(25), Right: unit.Dp(25), Left: unit.Dp(25)}
+	)
+
+	layout.Flex{Axis: layout.Vertical, Spacing: layout.SpaceSides}.Layout(
+		*gtx,
+		layout.Rigid(
+			func(gtx layout.Context) layout.Dimensions {
+				return labelMargin.Layout(
+					gtx,
+					func(gtx layout.Context) layout.Dimensions {
+						label := material.Label(theme, textSize, "Do you want to delete all information about service "+serviceName+"?")
+						label.Color = red
+						return label.Layout(gtx)
+					},
+				)
+			},
+		),
+		layout.Rigid(
+			func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{Axis: layout.Horizontal}.Layout(
+					gtx,
+					layout.Flexed(1,
+						func(gtx layout.Context) layout.Dimensions {
+							return btnMargin.Layout(
+								gtx,
+								func(gtx layout.Context) layout.Dimensions {
+									confirmBtn := material.Button(theme, confirm, "CONFIRM")
+									confirmBtn.Font.Weight = font.Bold
+									confirmBtn.Background = green
+									confirmBtn.Color = white
+									return confirmBtn.Layout(gtx)
+								},
+							)
+						},
+					),
+					layout.Flexed(1,
+						func(gtx layout.Context) layout.Dimensions {
+							return btnMargin.Layout(
+								gtx,
+
+								func(gtx layout.Context) layout.Dimensions {
+									denyBtn := material.Button(theme, deny, "DENY")
+									denyBtn.Font.Weight = font.Bold
+									denyBtn.Background = purple
+									denyBtn.Color = white
+									return denyBtn.Layout(gtx)
+								},
+							)
+						},
+					),
+				)
+			},
+		),
+	)
+
 }
