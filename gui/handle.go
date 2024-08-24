@@ -34,6 +34,11 @@ type PasswordEntriesGUI struct {
 	deleteBtnWidget *widget.Clickable
 }
 
+type DecryptionPackage struct {
+	err           error
+	passwordEntry server.PasswordEntry
+}
+
 // Creates list entry components
 func createPasswordEntryListLineComponents(serviceName string, theme *material.Theme) ([]layout.FlexChild, *widget.Clickable, *widget.Clickable) {
 	const buttonSize = 12
@@ -393,7 +398,7 @@ PasswordViewMarker:
 				for _, passwordEntryInfo := range passwordEntries {
 
 					if passwordEntryInfo.openBtnWidget.Clicked(gtx) {
-						// TODO: open password window
+						go authenticateAndShowPassword(backend, theme, passwordEntryInfo.serviceName)
 					}
 
 					if passwordEntryInfo.deleteBtnWidget.Clicked(gtx) {
@@ -443,6 +448,167 @@ PasswordViewMarker:
 	}
 }
 
+func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme, serviceName string) {
+	var (
+		centerWindow                  bool = true
+		alreadyDecrypted              bool = false
+		authenticate                  widget.Clickable
+		cancel                        widget.Clickable
+		showHide                      widget.Clickable
+		masterPasswordGUI             widget.Editor
+		passwordGUI                   widget.Editor
+		maxW                          unit.Dp = 850
+		maxH                          unit.Dp = 500
+		textCheckMsg                  string
+		passwordEditorBackgroundColor color.NRGBA = grey
+	)
+
+	masterPasswordGUI.SingleLine = true
+	masterPasswordGUI.Mask = '*'
+	passwordGUI.ReadOnly = true
+	passwordGUI.SingleLine = true
+	passwordGUI.Mask = '*'
+
+	ops := new(op.Ops)
+	window := new(app.Window)
+	window.Option(app.Decorated(true))
+	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.MaxSize(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.Title("frosk"))
+
+	confirmDecryptionChan := make(chan DecryptionPackage, 2)
+	closeLoaderChan := make(chan bool, 2)
+
+	// Schedule invalidate in seperate gorotuine to redraw window after initial show after resizing + centering.
+	// For some reason gio do not paint correct layout / elements sizes on the first show after resizing + centering.
+	go func() {
+		for range 3 {
+			time.Sleep(time.Second / 20)
+			window.Invalidate()
+		}
+		return
+	}()
+
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return
+		case app.FrameEvent:
+			gtx := app.NewContext(ops, e)
+			select {
+			case decryptPackage := <-confirmDecryptionChan:
+				closeLoaderChan <- true
+				switch decryptErr := decryptPackage.err; {
+				case decryptErr == nil:
+					passwordEditorBackgroundColor = white
+					passwordGUI.ReadOnly = false
+					if passwordGUI.Text() != decryptPackage.passwordEntry.Password {
+						passwordGUI.SetText(decryptPackage.passwordEntry.Password)
+					}
+					alreadyDecrypted = !alreadyDecrypted
+				case errors.Is(decryptErr, server.MasterPasswordDoNotMatch):
+					textCheckMsg = " - incorrect password."
+					passwordEditorBackgroundColor = red
+				default:
+					// TODO: show that error occured
+				}
+			default:
+			}
+
+			if authenticate.Clicked(gtx) && !alreadyDecrypted {
+				if len(masterPasswordGUI.Text()) == 0 {
+					textCheckMsg = " - empty, please enter password"
+				} else {
+					opsLoading := new(op.Ops)
+					loaderWindow := new(app.Window)
+					ResizeWindowLoad(loaderWindow)
+
+					textCheckMsg = ""
+
+					masterPassword := masterPasswordGUI.Text()
+					go tryPasswordDecryption(backend, window, confirmDecryptionChan, &serviceName, &masterPassword)
+					go showLoading(opsLoading, loaderWindow, theme, closeLoaderChan)
+				}
+			}
+
+			if cancel.Clicked(gtx) {
+				window.Perform(system.ActionClose)
+			}
+
+			if showHide.Clicked(gtx) {
+				if passwordGUI.ReadOnly != true {
+					switch {
+					case passwordGUI.Mask == rune(0):
+						passwordGUI.Mask = '*'
+					default:
+						passwordGUI.Mask = rune(0)
+					}
+				}
+			}
+
+			ManagePasswordDecryptionWidget(&gtx, theme, &serviceName, &textCheckMsg, &authenticate, &cancel, &showHide, &masterPasswordGUI, &passwordGUI, &passwordEditorBackgroundColor)
+
+			if centerWindow {
+				window.Perform(system.ActionCenter)
+				centerWindow = !centerWindow
+			}
+
+			e.Frame(gtx.Ops)
+		}
+	}
+
+}
+
+func tryPasswordDecryption(backend *server.Backend, window *app.Window, confirmDecryptionChan chan DecryptionPackage, serviceName *string, masterPassword *string) {
+	_, err := backend.CmpMasterPassword(*masterPassword)
+
+	if err != nil {
+		confirmDecryptionChan <- DecryptionPackage{err: err, passwordEntry: server.PasswordEntry{}}
+		window.Invalidate()
+		return
+	}
+
+	passwordEntry, err := backend.DecryptPasswordEntry(*serviceName, *masterPassword)
+
+	if err != nil {
+		confirmDecryptionChan <- DecryptionPackage{err: err, passwordEntry: server.PasswordEntry{}}
+	} else {
+		confirmDecryptionChan <- DecryptionPackage{err: nil, passwordEntry: passwordEntry}
+	}
+
+	window.Invalidate()
+	return
+}
+
+func showLoading(ops *op.Ops, window *app.Window, theme *material.Theme, closeLoadingChan chan bool) {
+	var centerWindow bool = true
+
+	for {
+		switch e := window.Event().(type) {
+		case app.DestroyEvent:
+			return
+
+		case app.FrameEvent:
+			gtx := app.NewContext(ops, e)
+
+			select {
+			case <-closeLoadingChan:
+				window.Perform(system.ActionClose)
+			default:
+				LoadWidget(&gtx, theme)
+			}
+
+			if centerWindow {
+				window.Perform(system.ActionCenter)
+				centerWindow = !centerWindow
+			}
+
+			e.Frame(gtx.Ops)
+		}
+	}
+}
+
 func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName string, refreshChan chan bool) {
 	var (
 		deletePasswordEntry bool = true
@@ -467,8 +633,6 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 		return
 	}()
 
-	// refreshChan <- true
-
 	{ // Window loop
 		for {
 			switch e := window.Event().(type) {
@@ -492,13 +656,12 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 
 					if deny.Clicked(gtx) {
 						window.Perform(system.ActionClose)
-						// return
 					}
 				}
 
 				{ // Paint
-					paint.Fill(ops, black)
-					ConfirmPasswordDeletion(&gtx, theme, serviceName, &confirm, &deny)
+					paint.Fill(ops, grey_light)
+					ConfirmPasswordDeletionWidget(&gtx, theme, serviceName, &confirm, &deny)
 
 					if centerWindow {
 						window.Perform(system.ActionCenter)
@@ -650,13 +813,9 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 				go func() {
 					masterPasswordMatch, err := backend.CmpMasterPassword(newPasswordView.masterPassword.Text())
 
-					if !masterPasswordMatch && err == nil {
+					if !masterPasswordMatch && errors.Is(err, server.MasterPasswordDoNotMatch) {
 						insertPasswordOperationChan <- InsertPasswordEntryOperation{server.MasterPasswordDoNotMatch, !inserted, "Master Password is incorrect."}
 						return
-					}
-
-					if err != nil {
-						// TODO: check if there are other types of errors and manage in GUI
 					}
 
 					err = backend.EncryptPasswordEntry(

@@ -353,7 +353,7 @@ func (backend *Backend) CmpMasterPassword(masterPasswordGUI string) (bool, error
 	err = bcrypt.CompareHashAndPassword(masterPasswordHashed, []byte(masterPasswordGUI))
 
 	if err == bcrypt.ErrMismatchedHashAndPassword {
-		return !masterPasswordMatch, nil
+		return !masterPasswordMatch, MasterPasswordDoNotMatch
 	} else if err != nil {
 		errWrapped := fmt.Errorf("Error during comparing master password: %w", err)
 		slog.Error(errWrapped.Error())
@@ -444,7 +444,7 @@ func (backend *Backend) EncryptPasswordEntry(serviceName string, password string
 	return nil
 }
 
-// Finds and decrypts passwrod and username for given service name
+// Finds and decrypts password and username for given service name
 func (backend *Backend) DecryptPasswordEntry(serviceName string, masterPasswordGUI string) (PasswordEntry, error) {
 	var (
 		passwordEntry           PasswordEntry
