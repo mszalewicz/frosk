@@ -455,17 +455,24 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 		alreadyDecrypted              bool = false
 		authenticate                  widget.Clickable
 		cancel                        widget.Clickable
-		showHide                      widget.Clickable
+		showHideUsername              widget.Clickable
+		showHidePassword              widget.Clickable
 		masterPasswordGUI             widget.Editor
+		usernameGUI                   widget.Editor
 		passwordGUI                   widget.Editor
 		maxW                          unit.Dp = 850
-		maxH                          unit.Dp = 500
+		maxH                          unit.Dp = 600
 		textCheckMsg                  string
 		passwordEditorBackgroundColor color.NRGBA = grey
 	)
 
 	masterPasswordGUI.SingleLine = true
 	masterPasswordGUI.Mask = '*'
+
+	usernameGUI.ReadOnly = true
+	usernameGUI.SingleLine = true
+	usernameGUI.Mask = '*'
+
 	passwordGUI.ReadOnly = true
 	passwordGUI.SingleLine = true
 	passwordGUI.Mask = '*'
@@ -503,10 +510,17 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 				switch decryptErr := decryptPackage.err; {
 				case decryptErr == nil:
 					passwordEditorBackgroundColor = white
+
+					usernameGUI.ReadOnly = false
+					if usernameGUI.Text() != decryptPackage.passwordEntry.Password {
+						usernameGUI.SetText(decryptPackage.passwordEntry.Username)
+					}
+
 					passwordGUI.ReadOnly = false
 					if passwordGUI.Text() != decryptPackage.passwordEntry.Password {
 						passwordGUI.SetText(decryptPackage.passwordEntry.Password)
 					}
+
 					alreadyDecrypted = !alreadyDecrypted
 				case errors.Is(decryptErr, server.MasterPasswordDoNotMatch):
 					textCheckMsg = " - incorrect password."
@@ -537,7 +551,7 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 				window.Perform(system.ActionClose)
 			}
 
-			if showHide.Clicked(gtx) {
+			if showHidePassword.Clicked(gtx) {
 				if passwordGUI.ReadOnly != true {
 					switch {
 					case passwordGUI.Mask == rune(0):
@@ -548,7 +562,18 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 				}
 			}
 
-			ManagePasswordDecryptionWidget(&gtx, theme, &serviceName, &textCheckMsg, &authenticate, &cancel, &showHide, &masterPasswordGUI, &passwordGUI, &passwordEditorBackgroundColor)
+			if showHideUsername.Clicked(gtx) {
+				if usernameGUI.ReadOnly != true {
+					switch {
+					case usernameGUI.Mask == rune(0):
+						usernameGUI.Mask = '*'
+					default:
+						usernameGUI.Mask = rune(0)
+					}
+				}
+			}
+
+			ManagePasswordDecryptionWidget(&gtx, theme, &serviceName, &textCheckMsg, &authenticate, &cancel, &showHideUsername, &showHidePassword, &masterPasswordGUI, &usernameGUI, &passwordGUI, &passwordEditorBackgroundColor)
 
 			if centerWindow {
 				window.Perform(system.ActionCenter)
