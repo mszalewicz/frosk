@@ -448,8 +448,6 @@ PasswordViewMarker:
 }
 
 func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme, serviceName string) {
-	// TODO: add username in the decryption form
-
 	var (
 		centerWindow                  bool = true
 		alreadyDecrypted              bool = false

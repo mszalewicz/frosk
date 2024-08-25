@@ -569,7 +569,6 @@ func ManagePasswordDecryptionWidget(gtx *layout.Context, theme *material.Theme, 
 					layout.Flexed(
 						1,
 						func(gtx layout.Context) layout.Dimensions {
-
 							return elementMargin.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
@@ -600,14 +599,13 @@ func ManagePasswordDecryptionWidget(gtx *layout.Context, theme *material.Theme, 
 						},
 					),
 					layout.Rigid(
-
 						func(gtx layout.Context) layout.Dimensions {
 
 							return showHideBtnMargin.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
-									showHideBtn := material.Button(theme, showHideUsername, " 👁 ")
-									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(5), Left: unit.Dp(1), Right: unit.Dp(1)}
+									showHideBtn := material.Button(theme, showHideUsername, "👁")
+									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(5), Left: unit.Dp(23), Right: unit.Dp(23)}
 									showHideBtn.TextSize = appTextSize
 									showHideBtn.Background = grey_light
 
@@ -674,8 +672,8 @@ func ManagePasswordDecryptionWidget(gtx *layout.Context, theme *material.Theme, 
 							return showHideBtnMargin.Layout(
 								gtx,
 								func(gtx layout.Context) layout.Dimensions {
-									showHideBtn := material.Button(theme, showHidePassword, " 👁 ")
-									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(5), Left: unit.Dp(1), Right: unit.Dp(1)}
+									showHideBtn := material.Button(theme, showHidePassword, "👁")
+									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(5), Left: unit.Dp(23), Right: unit.Dp(23)}
 									showHideBtn.TextSize = appTextSize
 									showHideBtn.Background = grey_light
 
