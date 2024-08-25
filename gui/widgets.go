@@ -453,7 +453,7 @@ func ConfirmPasswordDeletionWidget(gtx *layout.Context, theme *material.Theme, s
 				return labelMargin.Layout(
 					gtx,
 					func(gtx layout.Context) layout.Dimensions {
-						label := material.Label(theme, textSize, "Do you want to delete all information about service "+serviceName+"?")
+						label := material.Label(theme, textSize, "Do you want to delete all information about service "+serviceName+"? This action can't be reversed.")
 						label.Color = red
 						return label.Layout(gtx)
 					},
@@ -471,8 +471,7 @@ func ConfirmPasswordDeletionWidget(gtx *layout.Context, theme *material.Theme, s
 								func(gtx layout.Context) layout.Dimensions {
 									confirmBtn := material.Button(theme, confirm, "CONFIRM")
 									confirmBtn.Font.Weight = font.Bold
-									confirmBtn.Background = green
-									confirmBtn.Color = white
+									confirmBtn.Background = red
 									return confirmBtn.Layout(gtx)
 								},
 							)
@@ -486,8 +485,7 @@ func ConfirmPasswordDeletionWidget(gtx *layout.Context, theme *material.Theme, s
 								func(gtx layout.Context) layout.Dimensions {
 									denyBtn := material.Button(theme, deny, "DENY")
 									denyBtn.Font.Weight = font.Bold
-									denyBtn.Background = purple
-									denyBtn.Color = white
+									denyBtn.Background = blue
 									return denyBtn.Layout(gtx)
 								},
 							)

@@ -181,17 +181,13 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	theme := material.NewTheme()
 	theme.Shaper = text.NewShaper(text.WithCollection(gofont.Collection()))
-	theme.Bg = color.NRGBA{R: 150, G: 150, B: 150, A: 255}
-	theme.ContrastBg = red
-	// theme.Bg = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	theme.Bg = grey_light
+	theme.ContrastBg = grey_light
 
-	// masterPasswordSet := false
 	margin := layout.Inset{Top: unit.Dp(15), Bottom: unit.Dp(15), Left: unit.Dp(15), Right: unit.Dp(15)}
 
 	var ops op.Ops
 	var newPasswordEntryWidget widget.Clickable
-
-	// testServices := []string{"super long service name label", "test of language support: część", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank", "google", "email", "facebook", "twitter", "bank"}
 
 	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
 
@@ -230,8 +226,10 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	if numberOfEntriesInMasterTable == 0 {
 		if firstTimeShowingInitialSetupWindow {
 			go func() {
-				time.Sleep(time.Second / 20)
-				window.Invalidate()
+				for range 3 {
+					time.Sleep(time.Second / 20)
+					window.Invalidate()
+				}
 				return
 			}()
 			firstTimeShowingInitialSetupWindow = !firstTimeShowingInitialSetupWindow
@@ -328,7 +326,6 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 					}
 					break InitialLoadMarker
 				default:
-					// paint.Fill(gtx.Ops, black)
 					LoadWidget(&gtx, theme)
 				}
 
@@ -369,8 +366,10 @@ PasswordViewMarker:
 		// Schedule invalidate in seperate gorotuine to redraw window after initial show after resizing + centering.
 		// For some reason gio do not paint correct layout / elements sizes on the first show after resizing + centering.
 		go func() {
-			time.Sleep(time.Second / 10)
-			window.Invalidate()
+			for range 3 {
+				time.Sleep(time.Second / 20)
+				window.Invalidate()
+			}
 			return
 		}()
 
@@ -449,6 +448,8 @@ PasswordViewMarker:
 }
 
 func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme, serviceName string) {
+	// TODO: add username in the decryption form
+
 	var (
 		centerWindow                  bool = true
 		alreadyDecrypted              bool = false
@@ -660,7 +661,7 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 				}
 
 				{ // Paint
-					paint.Fill(ops, grey_light)
+					paint.Fill(ops, black)
 					ConfirmPasswordDeletionWidget(&gtx, theme, serviceName, &confirm, &deny)
 
 					if centerWindow {
@@ -683,6 +684,8 @@ type Information struct {
 }
 
 func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, theme *material.Theme) error {
+	// TODO: add random generation of password
+
 	var centerWindow bool = true
 	var inserted bool = true
 
