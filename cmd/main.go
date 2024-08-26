@@ -1,8 +1,6 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,7 +10,6 @@ import (
 	"gioui.org/unit"
 	server "github.com/mszalewicz/frosk/backend"
 	"github.com/mszalewicz/frosk/gui"
-	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -72,34 +69,11 @@ func main() {
 		err := gui.HandleMainWindow(window, backend)
 
 		if err != nil {
+			slog.Error(err.Error())
 			log.Fatal(err)
 		}
 		os.Exit(0)
 	}()
 
 	app.Main()
-
-	// TODO: Get below functionality to the hangle.go
-	serviceName := "google"
-	masterpass := "placeholder"
-
-	localDevLog.Debug("Getting password entry...")
-	passwordEntry, errToHandleInGUI := backend.DecryptPasswordEntry(serviceName, masterpass)
-
-	if errToHandleInGUI != nil {
-		switch {
-		case errors.Is(errToHandleInGUI, sql.ErrNoRows):
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		case errors.Is(errToHandleInGUI, bcrypt.ErrMismatchedHashAndPassword): // Check for authentication
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		default:
-			// TODO: implement GUI response
-			localDevLog.Debug(errToHandleInGUI.Error())
-		}
-	}
-
-	fmt.Printf("Password entry - service name: %s | username: %s | password: %s\n", passwordEntry.ServiceName, passwordEntry.Username, passwordEntry.Password)
-
 }

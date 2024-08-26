@@ -47,7 +47,6 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 	openBtn := material.Button(theme, &openBtnWidget, "OPEN")
 	openBtn.Color = color.NRGBA{R: 0, B: 0, G: 0, A: 255}
 	openBtn.Background = green
-	// openBtn.Background = color.NRGBA{R: 67, G: 168, B: 84, A: 255}
 	openBtn.TextSize = unit.Sp(buttonSize)
 	openBtn.Font.Weight = font.Bold
 
@@ -55,7 +54,6 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 	deleteBtn := material.Button(theme, &deleteBtnWidget, "DELETE")
 	deleteBtn.Color = color.NRGBA{R: 0, B: 0, G: 0, A: 255}
 	deleteBtn.Background = purple
-	// deleteBtn.Background = color.NRGBA{R: 235, G: 64, B: 52, A: 255}
 	deleteBtn.TextSize = unit.Sp(buttonSize)
 	deleteBtn.Font.Weight = font.Bold
 
@@ -197,8 +195,6 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	centerWindow := true
 
-	ResizeWindowInitialSetup(window)
-
 	passwordInput := new(widget.Editor)
 	passwordInput.SingleLine = true
 	passwordInput.Mask = '*'
@@ -224,6 +220,8 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	// Get master password info during firt use of application
 	if numberOfEntriesInMasterTable == 0 {
+		ResizeWindowInitialSetup(window)
+
 		if firstTimeShowingInitialSetupWindow {
 			go func() {
 				for range 3 {
