@@ -15,17 +15,18 @@ import (
 )
 
 var (
-	beige      = color.NRGBA{R: 247, G: 239, B: 229, A: 255}
-	black      = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-	blue       = color.NRGBA{R: 150, G: 201, B: 244, A: 255}
-	green      = color.NRGBA{R: 100, G: 196, B: 166, A: 255}
-	grey       = color.NRGBA{R: 200, G: 200, B: 200, A: 255}
-	grey_light = color.NRGBA{R: 235, G: 235, B: 235, A: 255}
-	orange     = color.NRGBA{R: 235, G: 178, B: 10, A: 100}
-	purple     = color.NRGBA{R: 161, G: 100, B: 196, A: 255}
-	red        = color.NRGBA{R: 238, G: 78, B: 78, A: 255}
-	white      = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-	textSize   = unit.Sp(30)
+	beige        = color.NRGBA{R: 247, G: 239, B: 229, A: 255}
+	black        = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+	blue         = color.NRGBA{R: 150, G: 201, B: 244, A: 255}
+	green        = color.NRGBA{R: 100, G: 196, B: 166, A: 255}
+	grey         = color.NRGBA{R: 200, G: 200, B: 200, A: 255}
+	grey_light   = color.NRGBA{R: 235, G: 235, B: 235, A: 255}
+	orange       = color.NRGBA{R: 235, G: 178, B: 10, A: 100}
+	purple       = color.NRGBA{R: 161, G: 100, B: 196, A: 255}
+	purple_light = color.NRGBA{R: 161, G: 100, B: 196, A: 120}
+	red          = color.NRGBA{R: 238, G: 78, B: 78, A: 255}
+	white        = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+	textSize     = unit.Sp(30)
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "!#$%&'()*+,-./:;<=>?@"
@@ -248,9 +249,9 @@ func ResizeWindowPasswordEntriesList(window *app.Window) {
 
 func ResizeWindowNewPasswordInsert(window *app.Window) {
 	window.Option(app.Decorated(true))
-	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
+	window.Option(app.MinSize(unit.Dp(500), unit.Dp(800)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
-	window.Option(app.Size(unit.Dp(750), unit.Dp(800)))
+	window.Option(app.Size(unit.Dp(750), unit.Dp(900)))
 	window.Option(app.Title("frosk"))
 }
 
@@ -262,6 +263,9 @@ type NewPasswordView struct {
 
 	confirmBtnWidget *widget.Clickable
 	showHidWidget    *widget.Clickable
+	smallRandWidget  *widget.Clickable
+	mediumRandWidget *widget.Clickable
+	bigRandWidget    *widget.Clickable
 
 	borderColor color.NRGBA
 }
@@ -269,6 +273,7 @@ type NewPasswordView struct {
 func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPasswordView *NewPasswordView, passwordLength string, info Information) {
 	elementMargin := layout.Inset{Top: unit.Dp(13), Bottom: unit.Dp(13), Right: unit.Dp(10), Left: unit.Dp(10)}
 	btnsMargin := layout.Inset{Top: unit.Dp(20), Bottom: unit.Dp(20), Right: unit.Dp(10), Left: unit.Dp(10)}
+	randomBtnsMargin := layout.Inset{Top: unit.Dp(0), Bottom: unit.Dp(0), Right: unit.Dp(10), Left: unit.Dp(10)}
 	appTextSize := unit.Sp(15)
 
 	layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(60), Right: unit.Dp(60)}.Layout(
@@ -396,6 +401,75 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 				}),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
+						return randomBtnsMargin.Layout(
+							gtx,
+							func(gtx layout.Context) layout.Dimensions {
+								return layout.Flex{Axis: layout.Horizontal, Alignment: layout.End, Spacing: layout.SpaceAround}.Layout(
+									gtx,
+									layout.Flexed(1,
+										func(gtx layout.Context) layout.Dimensions {
+											return randomBtnsMargin.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													confirmBtn := material.Button(theme, newPasswordView.smallRandWidget, "20 - 25")
+													confirmBtn.Background = purple_light
+													confirmBtn.Color = black
+													confirmBtn.TextSize = appTextSize - 5
+													confirmBtn.Font.Weight = font.Bold
+													border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
+
+													return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+													})
+												},
+											)
+										},
+									),
+									layout.Flexed(1,
+										func(gtx layout.Context) layout.Dimensions {
+											return randomBtnsMargin.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													confirmBtn := material.Button(theme, newPasswordView.mediumRandWidget, "25 - 40")
+													confirmBtn.Background = purple_light
+													confirmBtn.Color = black
+													confirmBtn.TextSize = appTextSize - 5
+													confirmBtn.Font.Weight = font.Bold
+													border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
+
+													return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+													})
+												},
+											)
+										},
+									),
+									layout.Flexed(1,
+										func(gtx layout.Context) layout.Dimensions {
+											return randomBtnsMargin.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													confirmBtn := material.Button(theme, newPasswordView.bigRandWidget, "40-100")
+													confirmBtn.Background = purple_light
+													confirmBtn.Color = black
+													confirmBtn.TextSize = appTextSize - 5
+													confirmBtn.Font.Weight = font.Bold
+													border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
+
+													return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+													})
+												},
+											)
+										},
+									),
+								)
+							},
+						)
+					},
+				),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
 						return btnsMargin.Layout(
 							gtx,
 							func(gtx layout.Context) layout.Dimensions {
@@ -496,6 +570,20 @@ func ConfirmPasswordDeletionWidget(gtx *layout.Context, theme *material.Theme, s
 		),
 	)
 
+}
+
+func ResizeDecryptionWindow(window *app.Window) {
+	var (
+		maxW unit.Dp = 850
+		maxH unit.Dp = 600
+	)
+	window.Option(app.Decorated(true))
+	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.MaxSize(unit.Dp(maxW*2), unit.Dp(maxH)))
+	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))
+	window.Option(app.Title("frosk"))
+
+	return
 }
 
 func ManagePasswordDecryptionWidget(gtx *layout.Context, theme *material.Theme, serviceName *string, textCheckMsg *string, authenticate *widget.Clickable, cancel *widget.Clickable, showHideUsername *widget.Clickable, showHidePassword *widget.Clickable, masterPasswordGUI *widget.Editor, usernameGUI *widget.Editor, passwordGUI *widget.Editor, passwordEditorBackgroundColor *color.NRGBA) {

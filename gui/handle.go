@@ -7,11 +7,13 @@ import (
 	"image"
 	"image/color"
 	"log/slog"
+	"math/rand"
 	"os"
 	"strconv"
 	"time"
 
 	server "github.com/mszalewicz/frosk/backend"
+	"github.com/mszalewicz/frosk/helpers"
 
 	"gioui.org/app"
 	"gioui.org/font"
@@ -456,8 +458,6 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 		masterPasswordGUI             widget.Editor
 		usernameGUI                   widget.Editor
 		passwordGUI                   widget.Editor
-		maxW                          unit.Dp = 850
-		maxH                          unit.Dp = 600
 		textCheckMsg                  string
 		passwordEditorBackgroundColor color.NRGBA = grey
 	)
@@ -475,11 +475,7 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 
 	ops := new(op.Ops)
 	window := new(app.Window)
-	window.Option(app.Decorated(true))
-	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
-	window.Option(app.MaxSize(unit.Dp(maxW), unit.Dp(maxH)))
-	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))
-	window.Option(app.Title("frosk"))
+	ResizeDecryptionWindow(window)
 
 	confirmDecryptionChan := make(chan DecryptionPackage, 2)
 	closeLoaderChan := make(chan bool, 2)
@@ -734,6 +730,9 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 
 	confirmBtnWidget := new(widget.Clickable)
 	showHideWidget := new(widget.Clickable)
+	smallRandWidget := new(widget.Clickable)
+	mediumRandWidget := new(widget.Clickable)
+	bigRandWidget := new(widget.Clickable)
 
 	newPasswordView := NewPasswordView{
 		masterPassword:   masterPassword,
@@ -742,6 +741,9 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 		password:         password,
 		confirmBtnWidget: confirmBtnWidget,
 		showHidWidget:    showHideWidget,
+		smallRandWidget:  smallRandWidget,
+		mediumRandWidget: mediumRandWidget,
+		bigRandWidget:    bigRandWidget,
 		borderColor:      black,
 	}
 
@@ -802,6 +804,31 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 					return nil
 				}
 			default:
+			}
+
+			if smallRandWidget.Clicked(gtx) {
+				r := rand.New(rand.NewSource(time.Now().UnixNano()))
+				min := 20
+				max := 25
+				len := r.Intn(max-min+1) + min
+				randomString := helpers.RandString(len, true)
+				newPasswordView.password.SetText(randomString)
+			}
+			if mediumRandWidget.Clicked(gtx) {
+				r := rand.New(rand.NewSource(time.Now().UnixNano()))
+				min := 25
+				max := 40
+				len := r.Intn(max-min+1) + min
+				randomString := helpers.RandString(len, true)
+				newPasswordView.password.SetText(randomString)
+			}
+			if bigRandWidget.Clicked(gtx) {
+				r := rand.New(rand.NewSource(time.Now().UnixNano()))
+				min := 40
+				max := 100
+				len := r.Intn(max-min+1) + min
+				randomString := helpers.RandString(len, true)
+				newPasswordView.password.SetText(randomString)
 			}
 
 		CheckConfirmButtonClickMarker:
