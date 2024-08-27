@@ -701,8 +701,6 @@ type Information struct {
 }
 
 func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, theme *material.Theme) error {
-	// TODO: add random generation of password
-
 	var centerWindow bool = true
 	var inserted bool = true
 
@@ -733,18 +731,25 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 	smallRandWidget := new(widget.Clickable)
 	mediumRandWidget := new(widget.Clickable)
 	bigRandWidget := new(widget.Clickable)
+	specialCharsWidget := new(widget.Clickable)
+	specialCharsText := "Special Chars: ON"
+	specialCharsColor := orange
 
 	newPasswordView := NewPasswordView{
-		masterPassword:   masterPassword,
-		serviceName:      serviceName,
-		username:         username,
-		password:         password,
-		confirmBtnWidget: confirmBtnWidget,
-		showHidWidget:    showHideWidget,
-		smallRandWidget:  smallRandWidget,
-		mediumRandWidget: mediumRandWidget,
-		bigRandWidget:    bigRandWidget,
-		borderColor:      black,
+		masterPassword:           masterPassword,
+		serviceName:              serviceName,
+		username:                 username,
+		password:                 password,
+		confirmBtnWidget:         confirmBtnWidget,
+		showHidWidget:            showHideWidget,
+		smallRandWidget:          smallRandWidget,
+		mediumRandWidget:         mediumRandWidget,
+		bigRandWidget:            bigRandWidget,
+		specialCharsSwitchWidget: specialCharsWidget,
+		specialCharsSwitchText:   specialCharsText,
+		specialCharsSwitchColor:  specialCharsColor,
+		specialCharsFlag:         true,
+		borderColor:              black,
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -811,7 +816,7 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 				min := 20
 				max := 25
 				len := r.Intn(max-min+1) + min
-				randomString := helpers.RandString(len, true)
+				randomString := helpers.RandString(len, newPasswordView.specialCharsFlag)
 				newPasswordView.password.SetText(randomString)
 			}
 			if mediumRandWidget.Clicked(gtx) {
@@ -819,7 +824,7 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 				min := 25
 				max := 40
 				len := r.Intn(max-min+1) + min
-				randomString := helpers.RandString(len, true)
+				randomString := helpers.RandString(len, newPasswordView.specialCharsFlag)
 				newPasswordView.password.SetText(randomString)
 			}
 			if bigRandWidget.Clicked(gtx) {
@@ -827,8 +832,20 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 				min := 40
 				max := 100
 				len := r.Intn(max-min+1) + min
-				randomString := helpers.RandString(len, true)
+				randomString := helpers.RandString(len, newPasswordView.specialCharsFlag)
 				newPasswordView.password.SetText(randomString)
+			}
+
+			if specialCharsWidget.Clicked(gtx) {
+				if newPasswordView.specialCharsFlag == true {
+					newPasswordView.specialCharsFlag = !newPasswordView.specialCharsFlag
+					newPasswordView.specialCharsSwitchText = "Special Chars: OFF"
+					newPasswordView.specialCharsSwitchColor = grey
+				} else {
+					newPasswordView.specialCharsFlag = !newPasswordView.specialCharsFlag
+					newPasswordView.specialCharsSwitchText = "Special Chars: ON"
+					newPasswordView.specialCharsSwitchColor = orange
+				}
 			}
 
 		CheckConfirmButtonClickMarker:

@@ -261,11 +261,16 @@ type NewPasswordView struct {
 	serviceName    *widget.Editor
 	username       *widget.Editor
 
-	confirmBtnWidget *widget.Clickable
-	showHidWidget    *widget.Clickable
-	smallRandWidget  *widget.Clickable
-	mediumRandWidget *widget.Clickable
-	bigRandWidget    *widget.Clickable
+	confirmBtnWidget         *widget.Clickable
+	showHidWidget            *widget.Clickable
+	smallRandWidget          *widget.Clickable
+	mediumRandWidget         *widget.Clickable
+	bigRandWidget            *widget.Clickable
+	specialCharsSwitchWidget *widget.Clickable
+
+	specialCharsSwitchText  string
+	specialCharsSwitchColor color.NRGBA
+	specialCharsFlag        bool
 
 	borderColor color.NRGBA
 }
@@ -451,6 +456,25 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 												func(gtx layout.Context) layout.Dimensions {
 													confirmBtn := material.Button(theme, newPasswordView.bigRandWidget, "40-100")
 													confirmBtn.Background = purple_light
+													confirmBtn.Color = black
+													confirmBtn.TextSize = appTextSize - 5
+													confirmBtn.Font.Weight = font.Bold
+													border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
+
+													return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+													})
+												},
+											)
+										},
+									),
+									layout.Flexed(1,
+										func(gtx layout.Context) layout.Dimensions {
+											return randomBtnsMargin.Layout(
+												gtx,
+												func(gtx layout.Context) layout.Dimensions {
+													confirmBtn := material.Button(theme, newPasswordView.specialCharsSwitchWidget, newPasswordView.specialCharsSwitchText)
+													confirmBtn.Background = newPasswordView.specialCharsSwitchColor
 													confirmBtn.Color = black
 													confirmBtn.TextSize = appTextSize - 5
 													confirmBtn.Font.Weight = font.Bold
