@@ -29,7 +29,7 @@ var (
 	textSize     = unit.Sp(30)
 )
 
-const alphabet = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "!#$%&'()*+,-./:;<=>?@"
+const alphabet = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "!#$%&'~`(){}[]*+,-./:;<=>?@_|\"\\"
 
 func ResizeWindowInfo(window *app.Window) {
 	window.Option(app.Decorated(true))

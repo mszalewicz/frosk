@@ -345,10 +345,10 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	}
 
 	refreshChan := make(chan bool, 1)
+	centerWindow = true
 
 PasswordViewMarker:
 	for {
-		centerWindow = true
 		services, err := backend.GetPasswordEntriesList()
 
 		if err != nil {
@@ -375,7 +375,7 @@ PasswordViewMarker:
 
 		ResizeWindowPasswordEntriesList(window)
 
-	ShowListMarker:
+		// ShowListMarker:
 		for {
 			switch e := window.Event().(type) {
 			case app.DestroyEvent:
@@ -406,7 +406,17 @@ PasswordViewMarker:
 				}
 
 				if newPasswordEntryWidget.Clicked(gtx) {
-					break ShowListMarker
+					// break ShowListMarker
+					go func() {
+						newPasswordWindow := new(app.Window)
+						ResizeWindowNewPasswordInsert(newPasswordWindow)
+						err = InputNewPassword(newPasswordWindow, &ops, backend, theme, refreshChan)
+
+						if err != nil {
+							errorWindow(&ops, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
+						}
+					}()
+
 				}
 
 				layout.Flex{
@@ -439,11 +449,11 @@ PasswordViewMarker:
 			}
 		}
 
-		err = InputNewPassword(window, &ops, backend, theme)
+		// err = InputNewPassword(window, &ops, backend, theme)
 
-		if err != nil {
-			errorWindow(&ops, window, theme, "Error occured during password saving. Please check logs.")
-		}
+		// if err != nil {
+		// 	errorWindow(&ops, window, theme, "Error occured during password saving. Please check logs.")
+		// }
 	}
 }
 
@@ -700,11 +710,9 @@ type Information struct {
 	color color.NRGBA
 }
 
-func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, theme *material.Theme) error {
+func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, theme *material.Theme, refreshChan chan bool) error {
 	var centerWindow bool = true
 	var inserted bool = true
-
-	ResizeWindowNewPasswordInsert(window)
 
 	masterPassword := new(widget.Editor)
 	masterPassword.SingleLine = true
@@ -806,7 +814,8 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 					}
 				}
 				if insertOperation.didInsert {
-					return nil
+					refreshChan <- true
+					window.Perform(system.ActionClose)
 				}
 			default:
 			}
