@@ -340,19 +340,22 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 		// Handle master password save error
 		if errOccured {
-			errorWindow(&ops, window, theme, "Error during saving master password.")
+			var errorWindowOps op.Ops
+			errorWindow(&errorWindowOps, window, theme, "Error during saving master password.")
 		}
 	}
 
 	refreshChan := make(chan bool, 1)
 	centerWindow = true
+	var passwordListOps op.Ops
 
 PasswordViewMarker:
 	for {
 		services, err := backend.GetPasswordEntriesList()
 
 		if err != nil {
-			errorWindow(&ops, window, theme, "Could not load password entries.")
+			var errorWindowOps op.Ops
+			errorWindow(&errorWindowOps, window, theme, "Could not load password entries.")
 		}
 
 		passwordEntriesList := &layout.List{Axis: layout.Vertical}
@@ -385,7 +388,7 @@ PasswordViewMarker:
 				// TODO; implement remembering last window size
 				// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
 
-				gtx := app.NewContext(&ops, e)
+				gtx := app.NewContext(&passwordListOps, e)
 
 				select {
 				case shouldRefresh := <-refreshChan:
@@ -408,12 +411,14 @@ PasswordViewMarker:
 				if newPasswordEntryWidget.Clicked(gtx) {
 					// break ShowListMarker
 					go func() {
+						var newPasswordEntryOps op.Ops
 						newPasswordWindow := new(app.Window)
 						ResizeWindowNewPasswordInsert(newPasswordWindow)
-						err = InputNewPassword(newPasswordWindow, &ops, backend, theme, refreshChan)
+						err = InputNewPassword(newPasswordWindow, &newPasswordEntryOps, backend, theme, refreshChan)
 
 						if err != nil {
-							errorWindow(&ops, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
+							var errorWindowOps op.Ops
+							errorWindow(&errorWindowOps, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
 						}
 					}()
 
