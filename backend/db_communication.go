@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
+	"strings"
 	"time"
 
 	b64 "encoding/base64"
@@ -533,6 +535,8 @@ func (backend *Backend) GetPasswordEntriesList() ([]string, error) {
 			services = append(services, service)
 		}
 	}
+
+	sort.Slice(services, func(i, j int) bool { return strings.ToLower(services[i]) < strings.ToLower(services[j]) })
 
 	return services, nil
 }
