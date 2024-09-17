@@ -84,7 +84,10 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 			return btnMargin.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return openBtn.Layout(gtx)
+					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
+					return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.UniformInset(unit.Dp(0)).Layout(gtx, openBtn.Layout)
+					})
 				},
 			)
 		},
@@ -95,7 +98,10 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 			return btnMargin.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					return deleteBtn.Layout(gtx)
+					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
+					return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+						return layout.UniformInset(unit.Dp(0)).Layout(gtx, deleteBtn.Layout)
+					})
 				},
 			)
 		},

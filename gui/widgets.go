@@ -18,6 +18,7 @@ var (
 	beige        = color.NRGBA{R: 247, G: 239, B: 229, A: 255}
 	black        = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
 	blue         = color.NRGBA{R: 150, G: 201, B: 244, A: 255}
+	charcoal     = color.NRGBA{R: 0, G: 0, B: 0, A: 150}
 	green        = color.NRGBA{R: 100, G: 196, B: 166, A: 255}
 	grey         = color.NRGBA{R: 200, G: 200, B: 200, A: 255}
 	grey_light   = color.NRGBA{R: 235, G: 235, B: 235, A: 255}
@@ -508,7 +509,11 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Background = green
 													confirmBtn.TextSize = appTextSize
 													confirmBtn.Font.Weight = font.Bold
-													return confirmBtn.Layout(gtx)
+													border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
+
+													return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+													})
 												},
 											)
 										},
