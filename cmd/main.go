@@ -5,6 +5,8 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/user"
+	"path/filepath"
 
 	"gioui.org/app"
 	"gioui.org/unit"
@@ -19,7 +21,18 @@ func main() {
 	// 		Mac:       ~/Library/Applications Support/frosk/log
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\log
 	// 		Linux:     /var/lib/frosk/log
-	const logPath string = "./cmd/log"
+	usr, err := user.Current()
+	if err != nil {
+		log.Fatal(err)
+	}
+	appDirectory := filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
+	logPath := filepath.Join(appDirectory, "log")
+
+	// Check if app directory exists
+	_, err = os.Stat(appDirectory)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
