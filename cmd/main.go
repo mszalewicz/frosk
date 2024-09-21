@@ -28,10 +28,16 @@ func main() {
 	appDirectory := filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
 	logPath := filepath.Join(appDirectory, "log")
 
-	// Check if app directory exists
 	_, err = os.Stat(appDirectory)
-	if err != nil {
-		log.Fatal(err)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(appDirectory, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return
+		}
+	} else if err != nil {
+		fmt.Println("Error checking directory:", err)
+		return
 	}
 
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
