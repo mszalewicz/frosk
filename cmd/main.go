@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"runtime"
 
 	"gioui.org/app"
 	"gioui.org/unit"
@@ -21,23 +22,30 @@ func main() {
 	// 		Mac:       ~/Library/Applications Support/frosk/log
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\log
 	// 		Linux:     /var/lib/frosk/log
+	current_os := runtime.GOOS
+	logPath := ""
+
 	usr, err := user.Current()
 	if err != nil {
 		log.Fatal(err)
 	}
-	appDirectory := filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
-	logPath := filepath.Join(appDirectory, "log")
 
-	_, err = os.Stat(appDirectory)
-	if os.IsNotExist(err) {
-		err := os.MkdirAll(appDirectory, os.ModePerm)
-		if err != nil {
-			fmt.Println("Error creating directory:", err)
+	switch current_os {
+	case "darwin":
+		appDirectory := filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
+		logPath = filepath.Join(appDirectory, "log")
+
+		_, err = os.Stat(appDirectory)
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(appDirectory, os.ModePerm)
+			if err != nil {
+				fmt.Println("Error creating directory:", err)
+				return
+			}
+		} else if err != nil {
+			fmt.Println("Error checking directory:", err)
 			return
 		}
-	} else if err != nil {
-		fmt.Println("Error checking directory:", err)
-		return
 	}
 
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
