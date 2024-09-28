@@ -18,10 +18,11 @@ import (
 )
 
 func main() {
-	// TODO: set db path such that it will much OS native path scheme:
+	//      App directory scheme under different OS:
 	// 		Mac:       ~/Library/Applications Support/frosk/log
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\log
 	// 		Linux:     /var/lib/frosk/log
+
 	current_os := runtime.GOOS
 	logPath := ""
 
@@ -48,6 +49,22 @@ func main() {
 		}
 	case "windows":
 		appDirectory := filepath.Join(usr.HomeDir, "AppData\\Local\\frosk")
+		logPath = filepath.Join(appDirectory, "log")
+
+		_, err = os.Stat(appDirectory)
+		if os.IsNotExist(err) {
+			err := os.MkdirAll(appDirectory, os.ModePerm)
+			if err != nil {
+				fmt.Println("Error creating directory:", err)
+				return
+			}
+		} else if err != nil {
+			fmt.Println("Error checking directory:", err)
+			return
+		}
+	case "linux":
+		// appDirectory := filepath.Join(usr.HomeDir, "AppData\\Local\\frosk")
+		appDirectory := "/var/lib/frosk"
 		logPath = filepath.Join(appDirectory, "log")
 
 		_, err = os.Stat(appDirectory)
