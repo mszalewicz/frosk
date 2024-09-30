@@ -10,7 +10,9 @@ import (
 	"runtime"
 
 	"gioui.org/app"
+	"gioui.org/op"
 	"gioui.org/unit"
+	"gioui.org/widget/material"
 	server "github.com/mszalewicz/frosk/backend"
 	"github.com/mszalewicz/frosk/gui"
 
@@ -82,8 +84,20 @@ func main() {
 
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
-		// TODO implement GUI response
-		log.Fatal(fmt.Errorf("Error during opening log file: %w", err))
+		slog.Error("Could not create log file.", "error", err)
+		var ops op.Ops
+		theme := material.NewTheme()
+
+		go func() {
+			window := new(app.Window)
+			window.Option(app.Title("frosk"))
+			window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
+			window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
+			window.Option(app.Decorated(false))
+			gui.ErrorWindow(&ops, window, theme, "Application could not create log file. Please report bug. Details can be found in the logs.")
+		}()
+
+		app.Main()
 	}
 	defer logFile.Close()
 
@@ -97,27 +111,49 @@ func main() {
 	// 		Linux:     /var/lib/frosk/application.sqlite
 	const applicationDB string = "./sql/application.sqlite"
 
-	// errToHandleInGUI is an error that was logged in the function that returns it
-	// It is returned to indicate that something went wrong and should be reflected in GUI state
 	backend, errToHandleInGUI := server.Initialize(applicationDB)
 
 	if errToHandleInGUI != nil {
-		fmt.Println(errToHandleInGUI)
-		// TODO implement GUI response
+		slog.Error("Could not create local db.", "error", errToHandleInGUI)
+		var ops op.Ops
+		theme := material.NewTheme()
+
+		go func() {
+			window := new(app.Window)
+			window.Option(app.Title("frosk"))
+			window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
+			window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
+			window.Option(app.Decorated(false))
+			gui.ErrorWindow(&ops, window, theme, "Application could not create local database. Please report bug. Details can be found in the logs.")
+		}()
+
+		app.Main()
 	}
 
 	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
-	// TODO: check if db already created
 	localDevLog.Debug("Create database from schema if not present...")
 	errToHandleInGUI = backend.CreateStructure()
 
 	if errToHandleInGUI != nil {
-		fmt.Println(errToHandleInGUI)
-		// TODO implement GUI response
+		slog.Error("Could not bootstrap db from schema.", "error", errToHandleInGUI)
+		var ops op.Ops
+		theme := material.NewTheme()
+
+		go func() {
+			window := new(app.Window)
+			window.Option(app.Title("frosk"))
+			window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
+			window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
+			window.Option(app.Decorated(false))
+			gui.ErrorWindow(&ops, window, theme, "Application could not create database structure. Please report bug. Details can be found in the logs.")
+		}()
+
+		app.Main()
 	}
 
 	// Start GUI
+	localDevLog.Debug("Starting GUI...")
 	go func() {
 		window := new(app.Window)
 		window.Option(app.Title("frosk"))

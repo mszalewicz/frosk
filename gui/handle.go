@@ -151,23 +151,32 @@ func horizontalDivider() layout.FlexChild {
 	)
 }
 
-func errorWindow(ops *op.Ops, window *app.Window, theme *material.Theme, errorMsg string) error {
+func ErrorWindow(ops *op.Ops, window *app.Window, theme *material.Theme, errorMsg string) error {
 	ResizeWindowInfo(window)
 	centerWindow := true
 
 	errConfirmWidget := new(widget.Clickable)
 	errListContainer := &widget.List{List: layout.List{Axis: layout.Vertical, Alignment: layout.Start}}
 
+	go func() {
+		for range 3 {
+			time.Sleep(time.Second / 20)
+			window.Invalidate()
+		}
+		return
+	}()
+
 	for {
 		switch e := window.Event().(type) {
 		case app.DestroyEvent:
+			os.Exit(1)
 			return e.Err
 
 		case app.FrameEvent:
 			gtx := app.NewContext(ops, e)
 
 			if errConfirmWidget.Clicked(gtx) {
-				os.Exit(0)
+				os.Exit(1)
 			}
 
 			InfoWindowWidget(&gtx, theme, errConfirmWidget, errListContainer, errorMsg)
@@ -198,7 +207,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	numberOfEntriesInMasterTable, errToHandleInGUI := backend.CountMasterEntries()
 
 	if errToHandleInGUI != nil {
-		errorWindow(&ops, window, theme, "Fatal error when running application. Please consult logs.")
+		ErrorWindow(&ops, window, theme, "Fatal error when running application. Please consult logs.")
 	}
 
 	centerWindow := true
@@ -347,7 +356,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 		// Handle master password save error
 		if errOccured {
 			var errorWindowOps op.Ops
-			errorWindow(&errorWindowOps, window, theme, "Error during saving master password.")
+			ErrorWindow(&errorWindowOps, window, theme, "Error during saving master password.")
 		}
 	}
 
@@ -361,7 +370,7 @@ PasswordViewMarker:
 
 		if err != nil {
 			var errorWindowOps op.Ops
-			errorWindow(&errorWindowOps, window, theme, "Could not load password entries.")
+			ErrorWindow(&errorWindowOps, window, theme, "Could not load password entries.")
 		}
 
 		passwordEntriesList := &layout.List{Axis: layout.Vertical}
@@ -424,7 +433,7 @@ PasswordViewMarker:
 
 						if err != nil {
 							var errorWindowOps op.Ops
-							errorWindow(&errorWindowOps, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
+							ErrorWindow(&errorWindowOps, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
 						}
 					}()
 
