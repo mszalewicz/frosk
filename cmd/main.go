@@ -27,6 +27,8 @@ func main() {
 
 	current_os := runtime.GOOS
 	logPath := ""
+	applicationDBPath := ""
+	appDirectory := ""
 
 	usr, err := user.Current()
 	if err != nil {
@@ -35,51 +37,31 @@ func main() {
 
 	switch current_os {
 	case "darwin":
-		appDirectory := filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
+		appDirectory = filepath.Join(usr.HomeDir, "/Library/Application Support/frosk/")
 		logPath = filepath.Join(appDirectory, "log")
+		applicationDBPath = filepath.Join(appDirectory, "application.sqlite")
 
-		_, err = os.Stat(appDirectory)
-		if os.IsNotExist(err) {
-			err := os.MkdirAll(appDirectory, os.ModePerm)
-			if err != nil {
-				fmt.Println("Error creating directory:", err)
-				return
-			}
-		} else if err != nil {
-			fmt.Println("Error checking directory:", err)
-			return
-		}
 	case "windows":
 		appDirectory := filepath.Join(usr.HomeDir, "AppData\\Local\\frosk")
 		logPath = filepath.Join(appDirectory, "log")
+		applicationDBPath = filepath.Join(appDirectory, "application.sqlite")
 
-		_, err = os.Stat(appDirectory)
-		if os.IsNotExist(err) {
-			err := os.MkdirAll(appDirectory, os.ModePerm)
-			if err != nil {
-				fmt.Println("Error creating directory:", err)
-				return
-			}
-		} else if err != nil {
-			fmt.Println("Error checking directory:", err)
-			return
-		}
 	case "linux":
-		// appDirectory := filepath.Join(usr.HomeDir, "AppData\\Local\\frosk")
 		appDirectory := "/var/lib/frosk"
 		logPath = filepath.Join(appDirectory, "log")
+		applicationDBPath = filepath.Join(appDirectory, "application.sqlite")
+	}
 
-		_, err = os.Stat(appDirectory)
-		if os.IsNotExist(err) {
-			err := os.MkdirAll(appDirectory, os.ModePerm)
-			if err != nil {
-				fmt.Println("Error creating directory:", err)
-				return
-			}
-		} else if err != nil {
-			fmt.Println("Error checking directory:", err)
+	_, err = os.Stat(appDirectory)
+	if os.IsNotExist(err) {
+		err := os.MkdirAll(appDirectory, os.ModePerm)
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
 			return
 		}
+	} else if err != nil {
+		fmt.Println("Error checking directory:", err)
+		return
 	}
 
 	logFile, err := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
@@ -105,13 +87,7 @@ func main() {
 	logger := slog.New(slog.NewJSONHandler(logFile, loggerArgs))
 	slog.SetDefault(logger)
 
-	// TODO: set db path such that it will much OS native path scheme:
-	// 		Mac:       ~/Library/Applications Support/frosk/application.sqlite
-	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\application.sqlite
-	// 		Linux:     /var/lib/frosk/application.sqlite
-	const applicationDB string = "./sql/application.sqlite"
-
-	backend, errToHandleInGUI := server.Initialize(applicationDB)
+	backend, errToHandleInGUI := server.Initialize(applicationDBPath)
 
 	if errToHandleInGUI != nil {
 		slog.Error("Could not create local db.", "error", errToHandleInGUI)
