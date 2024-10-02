@@ -106,13 +106,13 @@ func main() {
 		app.Main()
 	}
 
-	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	localDevLog.Debug("Create database from schema if not present...")
+	localDevLog.Info("Check if DB is present / create DB if necessary...")
 	errToHandleInGUI = backend.CreateStructure()
 
 	if errToHandleInGUI != nil {
-		slog.Error("Could not bootstrap db from schema.", "error", errToHandleInGUI)
+		slog.Error("Could not bootstrap DB from schema.", "error", errToHandleInGUI)
 		var ops op.Ops
 		theme := material.NewTheme()
 
@@ -128,8 +128,9 @@ func main() {
 		app.Main()
 	}
 
-	// Start GUI
-	localDevLog.Debug("Starting GUI...")
+	localDevLog.Info("DB present...")
+	localDevLog.Info("Starting GUI...")
+
 	go func() {
 		window := new(app.Window)
 		window.Option(app.Title("frosk"))
