@@ -5,7 +5,7 @@ package helpers
 import (
 	"fmt"
 	"log/slog"
-	"math/rand"
+	"math/rand/v2"
 	"runtime/debug"
 	"time"
 
@@ -35,7 +35,7 @@ func RandString(length int, allowSpecialChars bool) string {
 	randString := make([]byte, length)
 
 	for i := range length {
-		randString[i] = charsPool[rand.Int63()%int64(len(charsPool))]
+		randString[i] = charsPool[rand.Int64()%int64(len(charsPool))]
 	}
 
 	return string(randString)
