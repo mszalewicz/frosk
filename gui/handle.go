@@ -47,17 +47,21 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 
 	var openBtnWidget widget.Clickable
 	openBtn := material.Button(theme, &openBtnWidget, "OPEN")
-	openBtn.Color = color.NRGBA{R: 0, B: 0, G: 0, A: 255}
-	openBtn.Background = green
+	openBtn.Color = black
+	openBtn.Background = grey_light
 	openBtn.TextSize = unit.Sp(buttonSize)
-	openBtn.Font.Weight = font.Bold
+	openBtn.Font.Weight = font.Medium
+	openBtn.Font.Typeface = "Verdana, monospace"
+	// openBtn.Font.Style
 
 	var deleteBtnWidget widget.Clickable
 	deleteBtn := material.Button(theme, &deleteBtnWidget, "DELETE")
-	deleteBtn.Color = color.NRGBA{R: 0, B: 0, G: 0, A: 255}
-	deleteBtn.Background = purple
+	deleteBtn.Color = black
+	deleteBtn.Background =  grey_light
 	deleteBtn.TextSize = unit.Sp(buttonSize)
-	deleteBtn.Font.Weight = font.Bold
+	deleteBtn.Font.Weight = font.Medium
+	deleteBtn.Font.Typeface = "Verdana, monospace"
+
 
 	var btnMargin = layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(10), Right: unit.Dp(0)}
 	var labelMargin = layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(10), Right: unit.Dp(0)}
@@ -71,6 +75,8 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 
 					serviceNameLabel := material.Label(theme, unit.Sp(25), serviceName)
 					// serviceNameLabel.Font.Weight = font.Bold
+					serviceNameLabel.Font.Weight = font.Normal
+					serviceNameLabel.Font.Typeface = "Verdana, monospace"
 					serviceNameLabel.MaxLines = 1
 
 					return serviceNameLabel.Layout(gtx)
@@ -84,7 +90,7 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 			return btnMargin.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
+					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(0)}
 					return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						return layout.UniformInset(unit.Dp(0)).Layout(gtx, openBtn.Layout)
 					})
@@ -98,7 +104,7 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 			return btnMargin.Layout(
 				gtx,
 				func(gtx layout.Context) layout.Dimensions {
-					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
+					border := widget.Border{Color: charcoal, CornerRadius: unit.Dp(4), Width: unit.Dp(0)}
 					return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 						return layout.UniformInset(unit.Dp(0)).Layout(gtx, deleteBtn.Layout)
 					})
@@ -106,6 +112,10 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 			)
 		},
 	)
+
+	// splitButtons := new(SplitView)
+	// splitButtons.Layout(gtx, openBtnWidget.Layout, deleteBtn.Layout, 0.5 )
+
 
 	return []layout.FlexChild{serviceFlexChild, openBtnFlexChild, deleteBtnFlexChild}, &openBtnWidget, &deleteBtnWidget
 }
@@ -450,9 +460,11 @@ PasswordViewMarker:
 							return margin.Layout(gtx,
 								func(gtx layout.Context) layout.Dimensions {
 									newPasswordEntry := material.Button(theme, &newPasswordEntryWidget, "NEW")
-									newPasswordEntry.Background = color.NRGBA{R: 30, G: 30, B: 30, A: 255}
+									newPasswordEntry.Background = charcoal
 									newPasswordEntry.TextSize = unit.Sp(25)
-									newPasswordEntry.Font.Weight = font.Bold
+									newPasswordEntry.Font.Weight = font.SemiBold
+									newPasswordEntry.Font.Typeface = "Verdana, monospace"
+
 									return newPasswordEntry.Layout(gtx)
 								},
 							)
@@ -669,7 +681,7 @@ func confirmDeletion(backend *server.Backend, theme *material.Theme, serviceName
 
 	ops := new(op.Ops)
 	window := new(app.Window)
-	window.Option(app.Decorated(true))
+	window.Option(app.Decorated(false))
 	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
 	window.Option(app.MaxSize(unit.Dp(maxW), unit.Dp(maxH)))
 	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))

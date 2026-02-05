@@ -21,7 +21,7 @@ import (
 
 func main() {
 	//      App directory scheme under different OS:
-	// 		Mac:       ~/Library/Applications Support/frosk/log
+	// 		Mac:       ~/Library/Application\ Scripts/frosk/log
 	// 		Windows:   C:\Users\<username>\AppData\Local\frosk\log
 	// 		Linux:     /var/lib/frosk/log
 
@@ -133,7 +133,7 @@ func main() {
 
 	go func() {
 		window := new(app.Window)
-		window.Option(app.Title("frosk"))
+		window.Option(app.Title("VAULT"))
 		window.Option(app.Size(unit.Dp(450), unit.Dp(800)))
 		window.Option(app.MinSize(unit.Dp(350), unit.Dp(350)))
 		window.Option(app.Decorated(false))
