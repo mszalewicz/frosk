@@ -106,11 +106,6 @@ func main() {
 		app.Main()
 	}
 
-	localDevLog := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
-
-	localDevLog.Info("Check if DB is present / create DB if necessary...")
-	errToHandleInGUI = backend.CreateStructure()
-
 	if errToHandleInGUI != nil {
 		slog.Error("Could not bootstrap DB from schema.", "error", errToHandleInGUI)
 		var ops op.Ops
@@ -127,9 +122,6 @@ func main() {
 
 		app.Main()
 	}
-
-	localDevLog.Info("DB present...")
-	localDevLog.Info("Starting GUI...")
 
 	go func() {
 		window := new(app.Window)

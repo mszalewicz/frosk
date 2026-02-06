@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"sync"
+
 	"log/slog"
 	"math/rand"
 	"os"
@@ -27,6 +29,7 @@ import (
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
+	"github.com/sahilm/fuzzy"
 )
 
 type PasswordEntriesGUI struct {
@@ -57,11 +60,10 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 	var deleteBtnWidget widget.Clickable
 	deleteBtn := material.Button(theme, &deleteBtnWidget, "DELETE")
 	deleteBtn.Color = black
-	deleteBtn.Background =  grey_light
+	deleteBtn.Background = grey_light
 	deleteBtn.TextSize = unit.Sp(buttonSize)
 	deleteBtn.Font.Weight = font.Medium
 	deleteBtn.Font.Typeface = "Verdana, monospace"
-
 
 	var btnMargin = layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(10), Right: unit.Dp(0)}
 	var labelMargin = layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(10), Right: unit.Dp(0)}
@@ -74,7 +76,6 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 				func(gtx layout.Context) layout.Dimensions {
 
 					serviceNameLabel := material.Label(theme, unit.Sp(25), serviceName)
-					// serviceNameLabel.Font.Weight = font.Bold
 					serviceNameLabel.Font.Weight = font.Normal
 					serviceNameLabel.Font.Typeface = "Verdana, monospace"
 					serviceNameLabel.MaxLines = 1
@@ -113,15 +114,16 @@ func createPasswordEntryListLineComponents(serviceName string, theme *material.T
 		},
 	)
 
-	// splitButtons := new(SplitView)
-	// splitButtons.Layout(gtx, openBtnWidget.Layout, deleteBtn.Layout, 0.5 )
-
-
 	return []layout.FlexChild{serviceFlexChild, openBtnFlexChild, deleteBtnFlexChild}, &openBtnWidget, &deleteBtnWidget
 }
 
 // Creastes and populates GUI list container from password entries components
-func constructPasswordEntriesList(passwordEntries *[]PasswordEntriesGUI, passwordEntriesList *layout.List, margin layout.Inset) layout.FlexChild {
+func constructPasswordEntriesList(passwordEntries *[]PasswordEntriesGUI, passwordEntriesList *layout.List, margin layout.Inset, mutex *sync.Mutex) layout.FlexChild {
+
+	mutex.Lock()
+	localEntries := *passwordEntries
+	mutex.Unlock()
+
 	return layout.Flexed(
 		1,
 		func(gtx layout.Context) layout.Dimensions {
@@ -130,13 +132,13 @@ func constructPasswordEntriesList(passwordEntries *[]PasswordEntriesGUI, passwor
 				func(gtx layout.Context) layout.Dimensions {
 					return passwordEntriesList.Layout(
 						gtx,
-						len(*passwordEntries),
+						len(localEntries),
 						func(gtx layout.Context, i int) layout.Dimensions {
 							return layout.Flex{Axis: layout.Vertical}.Layout(
 								gtx,
 								layout.Rigid(
 									func(gtx layout.Context) layout.Dimensions {
-										return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, (*passwordEntries)[i].guiListElement...)
+										return layout.Flex{Axis: layout.Horizontal}.Layout(gtx, (localEntries)[i].guiListElement...)
 									},
 								),
 								horizontalDivider(),
@@ -245,6 +247,9 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	confirmBtnWidget := new(widget.Clickable)
 	showHideWidget := new(widget.Clickable)
+
+	var searchInput widget.Editor
+	searchInput.SingleLine = true
 
 	initialSetup := InitialSetup{
 		passwordInput:       passwordInput,
@@ -384,6 +389,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	refreshChan := make(chan bool, 1)
 	centerWindow = true
 	var passwordListOps op.Ops
+	var mutex sync.Mutex
 
 PasswordViewMarker:
 	for {
@@ -400,6 +406,14 @@ PasswordViewMarker:
 		for _, serviceName := range services {
 			listElement, openBtnWidget, deleteBtnWidget := createPasswordEntryListLineComponents(serviceName, theme)
 			passwordEntries = append(passwordEntries, PasswordEntriesGUI{serviceName: serviceName, guiListElement: listElement, openBtnWidget: openBtnWidget, deleteBtnWidget: deleteBtnWidget})
+		}
+
+		fullSetOfPasswordEntries := passwordEntries
+
+		var serviceNames []string
+
+		for _, entry := range passwordEntries {
+			serviceNames = append(serviceNames, entry.serviceName)
 		}
 
 		// Schedule invalidate in seperate gorotuine to redraw window after initial show after resizing + centering.
@@ -421,20 +435,51 @@ PasswordViewMarker:
 				return e.Err
 
 			case app.FrameEvent:
-				// TODO; implement remembering last window size
-				// fmt.Println("x: ", e.Size.X, " y: ", e.Size.Y, " conversion:", e.Metric.PxPerDp)
-
 				gtx := app.NewContext(&passwordListOps, e)
 
 				select {
 				case shouldRefresh := <-refreshChan:
 					_ = shouldRefresh
+					searchInput.SetText("")
 					goto PasswordViewMarker
 				default:
 				}
 
-				for _, passwordEntryInfo := range passwordEntries {
+				{ // Fuzzy search over service names list
+					event, ok := searchInput.Update(gtx)
+					if ok {
+						if _, ok := event.(widget.ChangeEvent); ok {
+							if searchInput.Text() != "" {
+								go func() {
+									query := searchInput.Text()
+									matches := fuzzy.Find(query, serviceNames)
 
+									var validEntries []PasswordEntriesGUI
+									for _, match := range matches {
+										for _, entry := range fullSetOfPasswordEntries {
+											if entry.serviceName == match.Str {
+												validEntries = append(validEntries, entry)
+											}
+										}
+									}
+
+									mutex.Lock()
+									passwordEntries = validEntries
+									mutex.Unlock()
+								}()
+							} else {
+								go func() {
+									mutex.Lock()
+									passwordEntries = fullSetOfPasswordEntries
+									mutex.Unlock()
+								}()
+							}
+
+						}
+					}
+				}
+
+				for _, passwordEntryInfo := range passwordEntries {
 					if passwordEntryInfo.openBtnWidget.Clicked(gtx) {
 						go authenticateAndShowPassword(backend, theme, passwordEntryInfo.serviceName)
 					}
@@ -442,10 +487,10 @@ PasswordViewMarker:
 					if passwordEntryInfo.deleteBtnWidget.Clicked(gtx) {
 						go confirmDeletion(backend, theme, passwordEntryInfo.serviceName, refreshChan)
 					}
+
 				}
 
 				if newPasswordEntryWidget.Clicked(gtx) {
-					// break ShowListMarker
 					go func() {
 						var newPasswordEntryOps op.Ops
 						newPasswordWindow := new(app.Window)
@@ -457,7 +502,6 @@ PasswordViewMarker:
 							ErrorWindow(&errorWindowOps, newPasswordWindow, theme, "Error occured during password saving. Please check logs.")
 						}
 					}()
-
 				}
 
 				layout.Flex{
@@ -465,7 +509,12 @@ PasswordViewMarker:
 					Spacing: layout.SpaceStart,
 				}.Layout(
 					gtx,
-					constructPasswordEntriesList(&passwordEntries, passwordEntriesList, margin),
+
+					layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+						return DrawSearchInput(gtx, theme, &searchInput, 130)
+					}),
+
+					constructPasswordEntriesList(&passwordEntries, passwordEntriesList, margin, &mutex),
 					layout.Rigid(
 						func(gtx layout.Context) layout.Dimensions {
 							return margin.Layout(gtx,
@@ -491,12 +540,6 @@ PasswordViewMarker:
 				e.Frame(gtx.Ops)
 			}
 		}
-
-		// err = InputNewPassword(window, &ops, backend, theme)
-
-		// if err != nil {
-		// 	errorWindow(&ops, window, theme, "Error occured during password saving. Please check logs.")
-		// }
 	}
 }
 
@@ -571,7 +614,6 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 					textCheckMsg = " - incorrect password."
 					passwordEditorBackgroundColor = red
 				default:
-					// TODO: show that error occured
 				}
 			default:
 			}
@@ -628,7 +670,6 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 			e.Frame(gtx.Ops)
 		}
 	}
-
 }
 
 func tryPasswordDecryption(backend *server.Backend, window *app.Window, confirmDecryptionChan chan DecryptionPackage, serviceName *string, masterPassword *string) {

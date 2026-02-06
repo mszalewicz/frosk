@@ -1,11 +1,14 @@
 package gui
 
 import (
+	"image"
 	"image/color"
 
 	"gioui.org/app"
 	"gioui.org/font"
 	"gioui.org/layout"
+	"gioui.org/op/clip"
+	"gioui.org/op/paint"
 	"gioui.org/unit"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -26,6 +29,7 @@ var (
 	red          = color.NRGBA{R: 238, G: 78, B: 78, A: 220}
 	white        = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
 	textSize     = unit.Sp(30)
+	appName      = "Vault"
 )
 
 const alphabet = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "!#$%&'~`(){}[]*+,-./:;<=>?@_|\"\\"
@@ -35,7 +39,7 @@ func ResizeWindowInfo(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(450), unit.Dp(450)))
 	window.Option(app.Size(unit.Dp(450), unit.Dp(450)))
-	window.Option(app.Title("frosk"))
+	window.Option(app.Title(appName))
 }
 
 func InfoWindowWidget(gtx *layout.Context, theme *material.Theme, returnBtnWidget *widget.Clickable, list *widget.List, text string) {
@@ -75,7 +79,7 @@ func ResizeWindowInitialSetup(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
 	window.Option(app.Size(unit.Dp(850), unit.Dp(850)))
-	window.Option(app.Title("frosk"))
+	window.Option(app.Title(appName))
 }
 
 type InitialSetup struct {
@@ -243,7 +247,7 @@ func ResizeWindowPasswordEntriesList(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(1_000), unit.Dp(1_000)))
 	window.Option(app.Size(unit.Dp(650), unit.Dp(1_000)))
-	window.Option(app.Title("VAULT"))
+	window.Option(app.Title("Vault"))
 }
 
 func ResizeWindowNewPasswordInsert(window *app.Window) {
@@ -251,7 +255,7 @@ func ResizeWindowNewPasswordInsert(window *app.Window) {
 	window.Option(app.MinSize(unit.Dp(500), unit.Dp(800)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
 	window.Option(app.Size(unit.Dp(750), unit.Dp(900)))
-	window.Option(app.Title("frosk"))
+	window.Option(app.Title(appName))
 }
 
 type NewPasswordView struct {
@@ -272,6 +276,44 @@ type NewPasswordView struct {
 	specialCharsFlag        bool
 
 	borderColor color.NRGBA
+}
+
+func DrawSearchInput(gtx layout.Context, th *material.Theme, editor *widget.Editor, height int) layout.Dimensions {
+	gtx.Constraints.Min.Y = height
+	gtx.Constraints.Max.Y = height
+	gtx.Constraints.Min.X = gtx.Constraints.Max.X
+
+	margins := layout.Inset{
+		Top:    unit.Dp(15),
+		Bottom: unit.Dp(0),
+		Left:   unit.Dp(20),
+		Right:  unit.Dp(20),
+	}
+
+	return margins.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+		return widget.Border{
+			Color:        color.NRGBA{A: 255},
+			Width:        unit.Dp(1),
+			CornerRadius: unit.Dp(4), // Added slight corner radius
+		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+			// --- Background Start ---
+			bgColor := color.NRGBA{R: 245, G: 245, B: 245, A: 255}
+			rr := gtx.Dp(unit.Dp(4)) // Match Border CornerRadius
+			paint.FillShape(gtx.Ops, bgColor, clip.RRect{
+				Rect: image.Rectangle{Max: gtx.Constraints.Min},
+				SE:   rr, SW: rr, NW: rr, NE: rr,
+			}.Op(gtx.Ops))
+
+			return layout.UniformInset(unit.Dp(8)).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+				editor := material.Editor(th, editor, "Search...")
+				editor.TextSize = unit.Sp(28)
+				editor.SelectionColor = purple_light
+				editor.Font.Typeface = "Verdana, monospace"
+				// Center text and hint horizontally
+				return editor.Layout(gtx)
+			})
+		})
+	})
 }
 
 func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPasswordView *NewPasswordView, passwordLength string, info Information) {
@@ -335,7 +377,7 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 							// border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
 							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPassword.Layout)
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPassword.Layout)
 							// })
 						},
 					)
@@ -356,11 +398,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.serviceName, "Enter name of service...")
 							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
-							// border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-							// })
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
 						},
 					)
 				}),
@@ -380,11 +419,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.username, "Enter username...")
 							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
-							// border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-							// })
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
 						},
 					)
 				}),
@@ -404,11 +440,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 							inputMasterPasswordRepeat := material.Editor(theme, newPasswordView.password, "Enter or generate random password...")
 							inputMasterPasswordRepeat.TextSize = appTextSize
 							inputMasterPasswordRepeat.SelectionColor = blue
-							// border := widget.Border{Color: newPasswordView.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-							// })
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
 						},
 					)
 				}),
@@ -429,11 +462,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Color = black
 													confirmBtn.TextSize = appTextSize - 5
 													confirmBtn.Font.Weight = font.Bold
-													// border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
 
-													// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-													// })
+													return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
 												},
 											)
 										},
@@ -448,11 +478,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Color = black
 													confirmBtn.TextSize = appTextSize - 5
 													confirmBtn.Font.Weight = font.Bold
-													// border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
 
-													// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-													// })
+													return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
 												},
 											)
 										},
@@ -467,11 +494,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Color = black
 													confirmBtn.TextSize = appTextSize - 5
 													confirmBtn.Font.Weight = font.Bold
-													// border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
 
-													// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-													// })
+													return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
 												},
 											)
 										},
@@ -486,11 +510,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Color = black
 													confirmBtn.TextSize = appTextSize - 5
 													confirmBtn.Font.Weight = font.Bold
-													// border := widget.Border{Color: black, CornerRadius: unit.Dp(5), Width: unit.Dp(1)}
 
-													// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-													// })
+													return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
 												},
 											)
 										},
@@ -520,11 +541,8 @@ func InsertNewPasswordWidget(gtx *layout.Context, theme *material.Theme, newPass
 													confirmBtn.Font.Weight = font.Normal
 													confirmBtn.Color = black
 													confirmBtn.Font.Typeface = "Verdana, monospace"
-													// border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(1)}
 
-													// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-														return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-													// })
+													return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
 												},
 											)
 										},
@@ -619,19 +637,18 @@ func ConfirmPasswordDeletionWidget(gtx *layout.Context, theme *material.Theme, s
 			},
 		),
 	)
-
 }
 
 func ResizeDecryptionWindow(window *app.Window) {
 	var (
 		maxW unit.Dp = 850
-		maxH unit.Dp = 600
+		maxH unit.Dp = 800
 	)
-	window.Option(app.Decorated(false))
+	window.Option(app.Decorated(true))
 	window.Option(app.MinSize(unit.Dp(maxW), unit.Dp(maxH)))
 	window.Option(app.MaxSize(unit.Dp(maxW*2), unit.Dp(maxH)))
 	window.Option(app.Size(unit.Dp(maxW), unit.Dp(maxH)))
-	window.Option(app.Title("frosk"))
+	window.Option(app.Title(appName))
 
 	return
 }
@@ -644,255 +661,211 @@ func ManagePasswordDecryptionWidget(gtx *layout.Context, theme *material.Theme, 
 		elementMargin     layout.Inset = layout.Inset{Top: unit.Dp(10), Bottom: unit.Dp(10), Right: unit.Dp(20), Left: unit.Dp(20)}
 	)
 
-	layout.Flex{Axis: layout.Vertical, Spacing: layout.SpaceSides}.Layout(
+	layout.Inset{Top: unit.Dp(5), Bottom: unit.Dp(5), Left: unit.Dp(60), Right: unit.Dp(60)}.Layout(
 		*gtx,
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return elementMargin.Layout(
-					gtx,
-					func(gtx layout.Context) layout.Dimensions {
-						label := material.Label(theme, textSize, "Decrypt information for "+*serviceName)
-						label.Color = black
-						return label.Layout(gtx)
-					},
-				)
-			},
-		),
-		horizontalDivider(),
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return elementMargin.Layout(
-					gtx,
-					func(gtx layout.Context) layout.Dimensions {
-						masterPasswordLabel := material.H6(theme, "Master Password"+*textCheckMsg)
-						if len(*textCheckMsg) == 0 {
-							masterPasswordLabel.Color = black
-						} else {
-							masterPasswordLabel.Color = red
-						}
-
-						return masterPasswordLabel.Layout(gtx)
-					},
-				)
-			},
-		),
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return elementMargin.Layout(
-					gtx,
-					func(gtx layout.Context) layout.Dimensions {
-						inputMasterPasswordRepeat := material.Editor(theme, masterPasswordGUI, "Enter master password and authenticate...")
-						inputMasterPasswordRepeat.HintColor = blue
-						inputMasterPasswordRepeat.TextSize = appTextSize
-						inputMasterPasswordRepeat.SelectionColor = blue
-
-						// border := widget.Border{Color: black, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
-
-						// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-						return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-						// })
-					},
-				)
-			},
-		),
-		horizontalDivider(),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return elementMargin.Layout(
+		func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{Axis: layout.Vertical, Spacing: layout.SpaceSides}.Layout(
 				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return material.H6(theme, "Username").Layout(gtx)
-				},
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+
+						return layout.Inset{Top: unit.Dp(0), Bottom: unit.Dp(20), Left: unit.Dp(0), Right: unit.Dp(0)}.Layout(
+							gtx,
+							func(gtx layout.Context) layout.Dimensions {
+
+								return elementMargin.Layout(
+									gtx,
+									func(gtx layout.Context) layout.Dimensions {
+										label := material.Label(theme, textSize, "Decrypt information for "+*serviceName)
+										label.Color = black
+										return label.Layout(gtx)
+									},
+								)
+							},
+						)
+					},
+				),
+				horizontalDivider(),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						return elementMargin.Layout(
+							gtx,
+							func(gtx layout.Context) layout.Dimensions {
+								masterPasswordLabel := material.H6(theme, "Master Password"+*textCheckMsg)
+								if len(*textCheckMsg) == 0 {
+									masterPasswordLabel.Color = black
+								} else {
+									masterPasswordLabel.Color = red
+								}
+
+								return masterPasswordLabel.Layout(gtx)
+							},
+						)
+					},
+				),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						return elementMargin.Layout(
+							gtx,
+							func(gtx layout.Context) layout.Dimensions {
+								inputMasterPasswordRepeat := material.Editor(theme, masterPasswordGUI, "Enter master password and authenticate...")
+								inputMasterPasswordRepeat.HintColor = blue
+								inputMasterPasswordRepeat.TextSize = appTextSize
+								inputMasterPasswordRepeat.SelectionColor = blue
+
+								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
+							},
+						)
+					},
+				),
+				horizontalDivider(),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return elementMargin.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return material.H6(theme, "Username").Layout(gtx)
+						},
+					)
+				}),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Horizontal}.Layout(
+							gtx,
+							layout.Flexed(
+								1,
+								func(gtx layout.Context) layout.Dimensions {
+									return elementMargin.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											usernameEditor := material.Editor(theme, usernameGUI, "Username will show after authentication...")
+											usernameEditor.SelectionColor = blue
+											usernameEditor.Font.Typeface = "Verdana, monospace"
+											usernameEditor.Font.Weight = font.Medium
+
+											return layout.UniformInset(unit.Dp(10)).Layout(gtx, usernameEditor.Layout)
+										},
+									)
+								},
+							),
+							layout.Rigid(
+								func(gtx layout.Context) layout.Dimensions {
+
+									return showHideBtnMargin.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											showHideBtn := material.Button(theme, showHideUsername, "show")
+											showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(12), Left: unit.Dp(23), Right: unit.Dp(23)}
+											showHideBtn.TextSize = appTextSize
+											showHideBtn.Background = grey_light
+											showHideBtn.Font.Typeface = "Verdana, monospace"
+											showHideBtn.Font.Weight = font.Normal
+											showHideBtn.Color = black
+
+											return showHideBtn.Layout(gtx)
+										},
+									)
+								},
+							),
+						)
+					},
+				),
+				horizontalDivider(),
+				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+					return elementMargin.Layout(
+						gtx,
+						func(gtx layout.Context) layout.Dimensions {
+							return material.H6(theme, "Password").Layout(gtx)
+						},
+					)
+				}),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Horizontal}.Layout(
+							gtx,
+							layout.Flexed(
+								1,
+								func(gtx layout.Context) layout.Dimensions {
+
+									return elementMargin.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											passwordEditor := material.Editor(theme, passwordGUI, "Password will show after authentication...")
+											passwordEditor.TextSize = appTextSize
+											passwordEditor.SelectionColor = blue
+											passwordEditor.Font.Typeface = "Verdana, monospace"
+											passwordEditor.Font.Weight = font.Medium
+
+											return layout.UniformInset(unit.Dp(10)).Layout(gtx, passwordEditor.Layout)
+										},
+									)
+
+								},
+							),
+							layout.Rigid(
+								func(gtx layout.Context) layout.Dimensions {
+									return showHideBtnMargin.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											showHideBtn := material.Button(theme, showHidePassword, "show")
+											showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(12), Left: unit.Dp(23), Right: unit.Dp(23)}
+											showHideBtn.TextSize = appTextSize
+											showHideBtn.Background = grey_light
+											showHideBtn.Font.Typeface = "Verdana, monospace"
+											showHideBtn.Font.Weight = font.Medium
+											showHideBtn.Color = black
+
+											return layout.UniformInset(unit.Dp(0)).Layout(gtx, showHideBtn.Layout)
+										},
+									)
+								},
+							),
+						)
+					},
+				),
+				horizontalDivider(),
+				layout.Rigid(
+					func(gtx layout.Context) layout.Dimensions {
+						return layout.Flex{Axis: layout.Horizontal}.Layout(
+							gtx,
+							layout.Flexed(1,
+								func(gtx layout.Context) layout.Dimensions {
+									return btnMargin.Layout(
+										gtx,
+										func(gtx layout.Context) layout.Dimensions {
+											confirmBtn := material.Button(theme, authenticate, "AUTHENTICATE")
+											confirmBtn.TextSize = appTextSize
+											confirmBtn.Font.Weight = font.Medium
+											confirmBtn.Background = blue
+											confirmBtn.Color = black
+											confirmBtn.Font.Typeface = "Verdana, monospace"
+
+											return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
+										},
+									)
+								},
+							),
+							layout.Flexed(1,
+								func(gtx layout.Context) layout.Dimensions {
+									return btnMargin.Layout(
+										gtx,
+
+										func(gtx layout.Context) layout.Dimensions {
+											cancelBtn := material.Button(theme, cancel, "CANCEL")
+											cancelBtn.TextSize = appTextSize
+											cancelBtn.Font.Weight = font.Medium
+											cancelBtn.Background = grey_light
+											cancelBtn.Color = black
+											cancelBtn.Font.Typeface = "Verdana, monospace"
+
+											return layout.UniformInset(unit.Dp(0)).Layout(gtx, cancelBtn.Layout)
+										},
+									)
+								},
+							),
+						)
+					},
+				),
 			)
-		}),
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal}.Layout(
-					gtx,
-					layout.Flexed(
-						1,
-						func(gtx layout.Context) layout.Dimensions {
-							return elementMargin.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									usernameEditor := material.Editor(theme, usernameGUI, "Username will show after authentication...")
-									usernameEditor.SelectionColor = blue
-									usernameEditor.Font.Typeface = "Verdana, monospace"
-									usernameEditor.Font.Weight = font.Medium
-
-									// { // Paint editor background
-									// 	editorDimensions := usernameEditor.Layout(gtx)
-									// 	backgroundShape := clip.RRect{
-									// 		Rect: image.Rectangle{Min: image.Point{gtx.Dp(2), gtx.Dp(2)}, Max: image.Point{gtx.Constraints.Max.X - gtx.Dp(2), editorDimensions.Size.Y*2 - gtx.Dp(4)}},
-									// 		SW:   gtx.Dp(8),
-									// 		SE:   gtx.Dp(8),
-									// 		NW:   gtx.Dp(8),
-									// 		NE:   gtx.Dp(8),
-									// 	}
-									// 	paint.FillShape(gtx.Ops, *passwordEditorBackgroundColor, backgroundShape.Op(gtx.Ops))
-									// }
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
-
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.UniformInset(unit.Dp(10)).Layout(gtx, usernameEditor.Layout)
-									// })
-								},
-							)
-
-						},
-					),
-					layout.Rigid(
-						func(gtx layout.Context) layout.Dimensions {
-
-							return showHideBtnMargin.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									showHideBtn := material.Button(theme, showHideUsername, "show")
-									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(12), Left: unit.Dp(23), Right: unit.Dp(23)}
-									showHideBtn.TextSize = appTextSize
-									showHideBtn.Background = grey_light
-									showHideBtn.Font.Typeface = "Verdana, monospace"
-									showHideBtn.Font.Weight = font.Normal
-									showHideBtn.Color = black
-
-									return showHideBtn.Layout(gtx)
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(2)}
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									// 	return layout.UniformInset(unit.Dp(0)).Layout(gtx, showHideBtn.Layout)
-									// })
-								},
-							)
-						},
-					),
-				)
-			},
-		),
-		horizontalDivider(),
-		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-			return elementMargin.Layout(
-				gtx,
-				func(gtx layout.Context) layout.Dimensions {
-					return material.H6(theme, "Password").Layout(gtx)
-				},
-			)
-		}),
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal}.Layout(
-					gtx,
-					layout.Flexed(
-						1,
-						func(gtx layout.Context) layout.Dimensions {
-
-							return elementMargin.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									passwordEditor := material.Editor(theme, passwordGUI, "Password will show after authentication...")
-									passwordEditor.TextSize = appTextSize
-									passwordEditor.SelectionColor = blue
-									passwordEditor.Font.Typeface = "Verdana, monospace"
-									passwordEditor.Font.Weight = font.Medium
-
-									// { // Paint editor background
-									// 	editorDimensions := passwordEditor.Layout(gtx)
-									// 	backgroundShape := clip.RRect{
-									// 		Rect: image.Rectangle{Min: image.Point{gtx.Dp(2), gtx.Dp(2)}, Max: image.Point{gtx.Constraints.Max.X - gtx.Dp(2), editorDimensions.Size.Y*2 - gtx.Dp(4)}},
-									// 		SW:   gtx.Dp(8),
-									// 		SE:   gtx.Dp(8),
-									// 		NW:   gtx.Dp(8),
-									// 		NE:   gtx.Dp(8),
-									// 	}
-									// 	paint.FillShape(gtx.Ops, *passwordEditorBackgroundColor, backgroundShape.Op(gtx.Ops))
-									// }
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
-
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.UniformInset(unit.Dp(10)).Layout(gtx, passwordEditor.Layout)
-									// })
-								},
-							)
-
-						},
-					),
-					layout.Rigid(
-
-						func(gtx layout.Context) layout.Dimensions {
-
-							return showHideBtnMargin.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									showHideBtn := material.Button(theme, showHidePassword, "show")
-									showHideBtn.Inset = layout.Inset{Top: unit.Dp(12), Bottom: unit.Dp(12), Left: unit.Dp(23), Right: unit.Dp(23)}
-									showHideBtn.TextSize = appTextSize
-									showHideBtn.Background = grey_light
-									showHideBtn.Font.Typeface = "Verdana, monospace"
-									showHideBtn.Font.Weight = font.Medium
-									showHideBtn.Color = black
-
-									// return showHideBtn.Layout(gtx)
-									return layout.UniformInset(unit.Dp(0)).Layout(gtx, showHideBtn.Layout)
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(2)}
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									// 	return layout.UniformInset(unit.Dp(0)).Layout(gtx, showHideBtn.Layout)
-									// })
-								},
-							)
-						},
-					),
-				)
-			},
-		),
-horizontalDivider(),
-		layout.Rigid(
-			func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{Axis: layout.Horizontal}.Layout(
-					gtx,
-					layout.Flexed(1,
-						func(gtx layout.Context) layout.Dimensions {
-							return btnMargin.Layout(
-								gtx,
-								func(gtx layout.Context) layout.Dimensions {
-									confirmBtn := material.Button(theme, authenticate, "AUTHENTICATE")
-									confirmBtn.TextSize = appTextSize
-									confirmBtn.Font.Weight = font.Medium
-									confirmBtn.Background = blue
-									confirmBtn.Color = black
-									confirmBtn.Font.Typeface = "Verdana, monospace"
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(2)}
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.UniformInset(unit.Dp(0)).Layout(gtx, confirmBtn.Layout)
-									// })
-								},
-							)
-						},
-					),
-					layout.Flexed(1,
-						func(gtx layout.Context) layout.Dimensions {
-							return btnMargin.Layout(
-								gtx,
-
-								func(gtx layout.Context) layout.Dimensions {
-									cancelBtn := material.Button(theme, cancel, "CANCEL")
-									cancelBtn.TextSize = appTextSize
-									cancelBtn.Font.Weight = font.Medium
-									cancelBtn.Background = grey_light
-									cancelBtn.Color = black
-									cancelBtn.Font.Typeface = "Verdana, monospace"
-
-									// border := widget.Border{Color: black, CornerRadius: unit.Dp(4), Width: unit.Dp(2)}
-									// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-									return layout.UniformInset(unit.Dp(0)).Layout(gtx, cancelBtn.Layout)
-									// })
-								},
-							)
-						},
-					),
-				)
-			},
-		),
+		},
 	)
 }
