@@ -161,6 +161,17 @@ func horizontalDivider() layout.FlexChild {
 	)
 }
 
+func emptyDivider() layout.FlexChild {
+	return layout.Rigid(
+		func(gtx layout.Context) layout.Dimensions {
+			height := unit.Dp(20)
+			line := image.Rect(0, 0, gtx.Constraints.Max.X, gtx.Dp(height))
+			paint.FillShape(gtx.Ops, white, clip.Rect(line).Op())
+			return layout.Dimensions{Size: image.Pt(gtx.Constraints.Max.X, gtx.Dp(height))}
+		},
+	)
+}
+
 func ErrorWindow(ops *op.Ops, window *app.Window, theme *material.Theme, errorMsg string) error {
 	ResizeWindowInfo(window)
 	centerWindow := true
@@ -811,7 +822,7 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 		}
 	}(ctx)
 
-	info := Information{"Provide Master Password to authenticate. Fill out form to save password for a service.", purple}
+	info := Information{"Provide Master Password to authenticate. Fill out form to save credentials for a service.", purple}
 	tryingToInsertPassword := false
 
 	type InsertPasswordEntryOperation struct {
