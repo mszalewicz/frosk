@@ -115,19 +115,22 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					},
 				),
 
+				///TODO
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
 						return elementMargin.Layout(
 							gtx,
 							func(gtx layout.Context) layout.Dimensions {
-								label := material.Label(theme, unit.Sp(20), "Please enter your master password. The longer your password, the better it will protect your sensitive information. Remember, this master password will encrypt and secure all your other passwords. If you forget it, there is no way to recover it—your access will be permanently lost.")
-								label.Color = red
-								label.Font.Weight = font.Bold
+								label := material.Label(theme, unit.Sp(20), "Please enter your master password. A longer password provides stronger encryption.\n\nWarning: This password is the only key to your local vault. If lost, your data cannot be recovered and will be permanently inaccessible.")
+								label.Color = blue
+								label.Font.Weight = font.Medium
+								label.Font.Typeface = "Verdana"
 								return label.Layout(gtx)
 							},
 						)
 					},
 				),
+				horizontalDivider(),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return elementMargin.Layout(
 						gtx,
@@ -140,17 +143,18 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					return elementMargin.Layout(
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							inputMasterPassword := material.Editor(theme, initialSetup.passwordInput, "Password")
+							inputMasterPassword := material.Editor(theme, initialSetup.passwordInput, "Enter password...")
 							inputMasterPassword.TextSize = unit.Sp(20)
 							inputMasterPassword.SelectionColor = blue
-							border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
+							// border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPassword.Layout)
-							})
+							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPassword.Layout)
+							// })
 						},
 					)
 				}),
+				horizontalDivider(),
 				layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 					return elementMargin.Layout(
 						gtx,
@@ -163,17 +167,18 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					return elementMargin.Layout(
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							inputMasterPasswordRepeat := material.Editor(theme, initialSetup.passwordInputRepeat, "Password")
+							inputMasterPasswordRepeat := material.Editor(theme, initialSetup.passwordInputRepeat, "Enter password...")
 							inputMasterPasswordRepeat.TextSize = unit.Sp(20)
 							inputMasterPasswordRepeat.SelectionColor = blue
-							border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
+							// border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-								return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-							})
+							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
+							// })
 						},
 					)
 				}),
+				horizontalDivider(),
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
 						return btnsMargin.Layout(
@@ -186,10 +191,12 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 											return elementMargin.Layout(
 												gtx,
 												func(gtx layout.Context) layout.Dimensions {
-													confirmBtn := material.Button(theme, initialSetup.confirmBtnWidget, "CONFIRM")
-													confirmBtn.Background = green
-													confirmBtn.TextSize = unit.Sp(25)
-													confirmBtn.Font.Weight = font.Bold
+													confirmBtn := material.Button(theme, initialSetup.confirmBtnWidget, "confirm")
+													confirmBtn.Background = blue
+													confirmBtn.Color = black
+													confirmBtn.TextSize = unit.Sp(20)
+													confirmBtn.Font.Weight = font.Medium
+													confirmBtn.Font.Typeface = "Verdana"
 													return confirmBtn.Layout(gtx)
 												},
 											)
@@ -200,10 +207,12 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 											return elementMargin.Layout(
 												gtx,
 												func(gtx layout.Context) layout.Dimensions {
-													confirmBtn := material.Button(theme, initialSetup.showHidWidget, "SHOW/HIDE")
-													confirmBtn.Background = color.NRGBA{R: 30, G: 30, B: 30, A: 255}
-													confirmBtn.TextSize = unit.Sp(25)
-													confirmBtn.Font.Weight = font.Bold
+													confirmBtn := material.Button(theme, initialSetup.showHidWidget, "show/hide")
+													confirmBtn.Background = grey_light
+													confirmBtn.Color = black
+													confirmBtn.TextSize = unit.Sp(20)
+													confirmBtn.Font.Weight = font.Medium
+													confirmBtn.Font.Typeface = "Verdana"
 													return confirmBtn.Layout(gtx)
 												},
 											)
@@ -245,8 +254,8 @@ func LoadWidget(gtx *layout.Context, theme *material.Theme) {
 func ResizeWindowPasswordEntriesList(window *app.Window) {
 	window.Option(app.Decorated(true))
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
-	window.Option(app.MaxSize(unit.Dp(1_000), unit.Dp(1_000)))
-	window.Option(app.Size(unit.Dp(650), unit.Dp(1_000)))
+	// window.Option(app.MaxSize(unit.Dp(1_000), unit.Dp(1_000)))
+	window.Option(app.Size(unit.Dp(500), unit.Dp(800)))
 	window.Option(app.Title("Vault"))
 }
 
@@ -294,9 +303,8 @@ func DrawSearchInput(gtx layout.Context, th *material.Theme, editor *widget.Edit
 		return widget.Border{
 			Color:        color.NRGBA{A: 255},
 			Width:        unit.Dp(1),
-			CornerRadius: unit.Dp(4), // Added slight corner radius
+			CornerRadius: unit.Dp(4),
 		}.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
-			// --- Background Start ---
 			bgColor := color.NRGBA{R: 245, G: 245, B: 245, A: 255}
 			rr := gtx.Dp(unit.Dp(4)) // Match Border CornerRadius
 			paint.FillShape(gtx.Ops, bgColor, clip.RRect{
