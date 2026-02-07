@@ -78,7 +78,7 @@ func ResizeWindowInitialSetup(window *app.Window) {
 	window.Option(app.Decorated(true))
 	window.Option(app.MinSize(unit.Dp(300), unit.Dp(300)))
 	window.Option(app.MaxSize(unit.Dp(2000), unit.Dp(2000)))
-	window.Option(app.Size(unit.Dp(850), unit.Dp(850)))
+	window.Option(app.Size(unit.Dp(1_000), unit.Dp(850)))
 	window.Option(app.Title(appName))
 }
 
@@ -92,7 +92,7 @@ type InitialSetup struct {
 	borderColor color.NRGBA
 }
 
-func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup *InitialSetup) {
+func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup *InitialSetup, masterPasswordHeading *material.LabelStyle, masterPasswordRepeatHeading *material.LabelStyle) {
 	elementMargin := layout.Inset{Top: unit.Dp(17), Bottom: unit.Dp(17), Right: unit.Dp(10), Left: unit.Dp(10)}
 	btnsMargin := layout.Inset{Top: unit.Dp(25), Bottom: unit.Dp(25), Right: unit.Dp(10), Left: unit.Dp(10)}
 
@@ -135,7 +135,7 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					return elementMargin.Layout(
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							return material.H6(theme, "Master Password:").Layout(gtx)
+							return masterPasswordHeading.Layout(gtx)
 						},
 					)
 				}),
@@ -146,11 +146,8 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 							inputMasterPassword := material.Editor(theme, initialSetup.passwordInput, "Enter password...")
 							inputMasterPassword.TextSize = unit.Sp(20)
 							inputMasterPassword.SelectionColor = blue
-							// border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPassword.Layout)
-							// })
 						},
 					)
 				}),
@@ -159,7 +156,7 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					return elementMargin.Layout(
 						gtx,
 						func(gtx layout.Context) layout.Dimensions {
-							return material.H6(theme, "Repeat Master Password:").Layout(gtx)
+							return masterPasswordRepeatHeading.Layout(gtx)
 						},
 					)
 				}),
@@ -170,11 +167,8 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 							inputMasterPasswordRepeat := material.Editor(theme, initialSetup.passwordInputRepeat, "Enter password...")
 							inputMasterPasswordRepeat.TextSize = unit.Sp(20)
 							inputMasterPasswordRepeat.SelectionColor = blue
-							// border := widget.Border{Color: initialSetup.borderColor, CornerRadius: unit.Dp(8), Width: unit.Dp(2)}
 
-							// return border.Layout(gtx, func(gtx layout.Context) layout.Dimensions {
 							return layout.UniformInset(unit.Dp(10)).Layout(gtx, inputMasterPasswordRepeat.Layout)
-							// })
 						},
 					)
 				}),

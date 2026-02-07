@@ -261,6 +261,9 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 	firstTimeShowingInitialSetupWindow := true
 
+	masterPasswordHeading := material.H6(theme, "Master password:")
+	masterPasswordRepeatHeading := material.H6(theme, "Repeat password:")
+
 	// Get master password info during firt use of application
 	if numberOfEntriesInMasterTable == 0 {
 		ResizeWindowInitialSetup(window)
@@ -325,15 +328,17 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 
 					switch {
 					case inputEventOccured && initialSetup.passwordInput.Len() > 0 && initialSetup.passwordInputRepeat.Len() > 0 && initialSetup.passwordInput.Text() != initialSetup.passwordInputRepeat.Text():
-						initialSetup.borderColor = red
+						masterPasswordRepeatHeading.Color = red
+						masterPasswordRepeatHeading.Text = "Repeat password: (does not match)"
 					case inputEventOccured:
-						initialSetup.borderColor = black
+						masterPasswordRepeatHeading.Color = black
+						masterPasswordRepeatHeading.Text = "Repeat password:"
 					default:
 						break CheckInputEventMarker
 					}
 				}
 
-				InitialSetupWidget(&gtx, theme, &initialSetup)
+				InitialSetupWidget(&gtx, theme, &initialSetup, &masterPasswordHeading, &masterPasswordRepeatHeading)
 
 				if centerWindow {
 					window.Perform(system.ActionCenter)
