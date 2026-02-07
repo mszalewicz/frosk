@@ -106,6 +106,8 @@ func main() {
 		app.Main()
 	}
 
+	errToHandleInGUI = backend.CreateStructure()
+
 	if errToHandleInGUI != nil {
 		slog.Error("Could not bootstrap DB from schema.", "error", errToHandleInGUI)
 		var ops op.Ops
@@ -122,6 +124,7 @@ func main() {
 
 		app.Main()
 	}
+
 
 	go func() {
 		window := new(app.Window)
