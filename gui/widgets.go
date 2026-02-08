@@ -32,7 +32,7 @@ var (
 	appName      = "Vault"
 )
 
-const alphabet = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "!#$%&'~`(){}[]*+,-./:;<=>?@_|\"\\"
+const input_filter = "abcdefghijklmnopqrstuvwxyz" + "ABCDEFGHIJKLMNOPQRSTUVWXYZ" + "0123456789" + "^!#$%&'~`(){}[]*+,-./:;<=>?@_|\"\\"
 
 func ResizeWindowInfo(window *app.Window) {
 	window.Option(app.Decorated(true))
@@ -115,7 +115,6 @@ func InitialSetupWidget(gtx *layout.Context, theme *material.Theme, initialSetup
 					},
 				),
 
-				///TODO
 				layout.Rigid(
 					func(gtx layout.Context) layout.Dimensions {
 						return elementMargin.Layout(

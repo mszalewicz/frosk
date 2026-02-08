@@ -24,7 +24,7 @@ func RandString(length int, allowSpecialChars bool) string {
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
 		"0123456789"
 
-	const specialChars = "!#$%&'()*+,-./:;<=>?@"
+	const specialChars = "^!#$%&'()*+,-./:;<=>?@_|\"\\"
 
 	charsPool := []byte(chars)
 

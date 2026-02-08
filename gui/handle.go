@@ -238,12 +238,12 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	passwordInput := new(widget.Editor)
 	passwordInput.SingleLine = true
 	passwordInput.Mask = '*'
-	passwordInput.Filter = alphabet
+	passwordInput.Filter = input_filter
 
 	passwordInputRepeat := new(widget.Editor)
 	passwordInputRepeat.SingleLine = true
 	passwordInputRepeat.Mask = '*'
-	passwordInputRepeat.Filter = alphabet
+	passwordInputRepeat.Filter = input_filter
 
 	confirmBtnWidget := new(widget.Clickable)
 	showHideWidget := new(widget.Clickable)
@@ -565,6 +565,7 @@ func authenticateAndShowPassword(backend *server.Backend, theme *material.Theme,
 
 	masterPasswordGUI.SingleLine = true
 	masterPasswordGUI.Mask = '*'
+	masterPasswordGUI.Filter = input_filter
 
 	usernameGUI.ReadOnly = true
 	usernameGUI.SingleLine = true
@@ -806,22 +807,22 @@ func InputNewPassword(window *app.Window, ops *op.Ops, backend *server.Backend, 
 	masterPassword := new(widget.Editor)
 	masterPassword.SingleLine = true
 	masterPassword.Mask = '*'
-	masterPassword.Filter = alphabet
+	masterPassword.Filter = input_filter
 
 	serviceName := new(widget.Editor)
 	serviceName.SingleLine = true
 	serviceName.Mask = '*'
-	serviceName.Filter = alphabet
+	serviceName.Filter = input_filter + " "
 
 	username := new(widget.Editor)
 	username.SingleLine = true
 	username.Mask = '*'
-	username.Filter = alphabet
+	username.Filter = input_filter + " "
 
 	password := new(widget.Editor)
 	password.SingleLine = true
 	password.Mask = '*'
-	password.Filter = alphabet
+	password.Filter = input_filter
 
 	confirmBtnWidget := new(widget.Clickable)
 	showHideWidget := new(widget.Clickable)
