@@ -5,7 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -17,8 +17,7 @@ import (
 	b64 "encoding/base64"
 
 	"github.com/mszalewicz/frosk/helpers"
-	"golang.org/x/crypto/bcrypt"
-	"golang.org/x/crypto/pbkdf2"
+	"golang.org/x/crypto/argon2"
 )
 
 var EmptyPassword = errors.New("No password given to insert.")
@@ -39,6 +38,20 @@ type PasswordEntry struct {
 	Username    string
 	Password    string
 	ServiceName string
+}
+
+type ArgonConfig struct {
+	time    uint32
+	memory  uint32
+	threads uint8
+}
+
+func GetDefaultArgonConfig() ArgonConfig {
+	return ArgonConfig{
+		time:    3,
+		memory:  512 * 1024, // 512MB
+		threads: 8,
+	}
 }
 
 // Returns GCM block cipher based on secret key
@@ -66,8 +79,8 @@ func InitGCM(secretKey []byte) (cipher.AEAD, error) {
 
 func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, error) {
 	var (
-		masterPasswordEncryptedBase64    string
-		masterPasswordEncrypted          []byte
+		masterPasswordHashedBase64       string
+		masterPasswordHashed             []byte
 		userSecretKeyEncryptedBase64     string
 		userSecretKeyEncrypted           []byte
 		userSecretKey                    []byte
@@ -82,7 +95,7 @@ func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, erro
 	}
 
 	row := backend.DB.QueryRow("SELECT \"password\", secret_key, salt, initial_vector FROM master")
-	err := row.Scan(&masterPasswordEncryptedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorUserSecretKeyBase64)
+	err := row.Scan(&masterPasswordHashedBase64, &userSecretKeyEncryptedBase64, &saltBase64, &initialVectorUserSecretKeyBase64)
 
 	if err != nil {
 		errorWrapped := fmt.Errorf("Error during select query to master table: %w", err)
@@ -90,7 +103,7 @@ func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, erro
 		return userSecretKey, err
 	}
 
-	masterPasswordEncrypted, errDecodingMasterPassword := b64.StdEncoding.DecodeString(masterPasswordEncryptedBase64)
+	masterPasswordHashed, errDecodingMasterPassword := b64.StdEncoding.DecodeString(masterPasswordHashedBase64)
 	userSecretKeyEncrypted, errDecodingUserSecretKey := b64.StdEncoding.DecodeString(userSecretKeyEncryptedBase64)
 	initialVectorUserSecretKey, errDecodingInitialVector := b64.StdEncoding.DecodeString(initialVectorUserSecretKeyBase64)
 	salt, errDecodingSalt := b64.StdEncoding.DecodeString(saltBase64)
@@ -106,16 +119,18 @@ func (backend *Backend) GetUserSecretKey(masterPasswordGUI string) ([]byte, erro
 		return userSecretKey, errorWrapped
 	}
 
-	// Authenticate
-	err = bcrypt.CompareHashAndPassword(masterPasswordEncrypted, []byte(masterPasswordGUI))
+	argonSettings := GetDefaultArgonConfig()
+	argonOutput := argon2.IDKey([]byte(masterPasswordGUI), salt, argonSettings.time, argonSettings.memory, argonSettings.threads, 64)
 
-	if err != nil {
+	masterPasswordComputedHash := argonOutput[0:32]
+	secretKey := argonOutput[32:64]
+
+	if subtle.ConstantTimeCompare(masterPasswordHashed, masterPasswordComputedHash) != 1 {
 		errorWrapped := fmt.Errorf("Master password from GUI input do not match databse signature: %w", err)
 		slog.Error(errorWrapped.Error())
 		return userSecretKey, errorWrapped
 	}
 
-	secretKey := pbkdf2.Key([]byte(masterPasswordGUI), salt, 4096, 32, sha256.New)
 	gcmForUserSecretKey, err := InitGCM(secretKey)
 
 	if err != nil {
@@ -242,23 +257,8 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 
 	helpers.AssertBigger(len(masterPassword), 0)
 
-	plaintext := []byte(masterPassword)
-
-	// Increasing cost by 1, increases hashing execution time by 2x
-	// i.e cost 14 will take 2x time than if cost was equal to 13
-	bcryptHash, err := bcrypt.GenerateFromPassword(plaintext, 14)
-
-	if err != nil {
-		errWrapped := fmt.Errorf("Could not calculate bcrypt hash: %w", err)
-		slog.Error(errWrapped.Error())
-		return errWrapped
-	}
-
-	masterPasswordHashBase64 := b64.StdEncoding.EncodeToString(bcryptHash)
-
-	// Length 16 is a compromise between security and execution time for PBKDF2
 	salt := make([]byte, 16)
-	_, err = rand.Read(salt)
+	_, err := rand.Read(salt)
 
 	if err != nil {
 		errorWrapped := fmt.Errorf("Error during randomizing salt: %w", err)
@@ -268,8 +268,13 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 
 	saltBase64 := b64.StdEncoding.EncodeToString(salt)
 
-	// Length 32 is maximal for AES secret key and corresponds to usage of AES-256
-	secretKey := pbkdf2.Key(plaintext, salt, 4096, 32, sha256.New)
+	argonSettings := GetDefaultArgonConfig()
+	argonOutput := argon2.IDKey([]byte(masterPassword), salt, argonSettings.time, argonSettings.memory, argonSettings.threads, 64)
+
+	masterPasswordHash := argonOutput[0:32]
+	secretKey := argonOutput[32:64]
+
+	masterPasswordHashBase64 := b64.StdEncoding.EncodeToString(masterPasswordHash)
 
 	helpers.Assert(len(secretKey), 32)
 
@@ -332,11 +337,12 @@ func (backend *Backend) InitMaster(masterPassword string) error {
 func (backend *Backend) CmpMasterPassword(masterPasswordGUI string) (bool, error) {
 	var masterPasswordHashedBase64 string
 	var masterPasswordHashed []byte
+	var saltBase64 string
 	var masterPasswordMatch bool = true
 
-	query := "SELECT password FROM master"
+	query := "SELECT password, salt FROM master"
 	row := backend.DB.QueryRow(query)
-	err := row.Scan(&masterPasswordHashedBase64)
+	err := row.Scan(&masterPasswordHashedBase64, &saltBase64)
 
 	if err != nil {
 		errWrapped := fmt.Errorf("Could not get master password from db with select: %w", err)
@@ -352,14 +358,21 @@ func (backend *Backend) CmpMasterPassword(masterPasswordGUI string) (bool, error
 		return false, errWrapped
 	}
 
-	err = bcrypt.CompareHashAndPassword(masterPasswordHashed, []byte(masterPasswordGUI))
+	salt, err := b64.StdEncoding.DecodeString(saltBase64)
 
-	if err == bcrypt.ErrMismatchedHashAndPassword {
-		return !masterPasswordMatch, MasterPasswordDoNotMatch
-	} else if err != nil {
-		errWrapped := fmt.Errorf("Error during comparing master password: %w", err)
+	if err != nil {
+		errWrapped := fmt.Errorf("Could not decode salt: %w", err)
 		slog.Error(errWrapped.Error())
 		return false, errWrapped
+	}
+
+	argonSettings := GetDefaultArgonConfig()
+	argonOutput := argon2.IDKey([]byte(masterPasswordGUI), salt, argonSettings.time, argonSettings.memory, argonSettings.threads, 64)
+
+	masterPasswordComputedHash := argonOutput[0:32]
+
+	if subtle.ConstantTimeCompare(masterPasswordHashed, masterPasswordComputedHash) != 1 {
+		return !masterPasswordMatch, MasterPasswordDoNotMatch
 	} else {
 		return masterPasswordMatch, nil
 	}
