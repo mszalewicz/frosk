@@ -21,6 +21,7 @@ import (
 	"gioui.org/font"
 	"gioui.org/font/gofont"
 	"gioui.org/io/system"
+	"gioui.org/io/key"
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/op/clip"
@@ -298,6 +299,7 @@ func HandleMainWindow(window *app.Window, backend *server.Backend) error {
 	}
 
 	firstTimeShowingInitialSetupWindow := true
+	focusSearchBarOnWindowLoad := true
 
 	masterPasswordHeading := material.H6(theme, "Master password:")
 	masterPasswordRepeatHeading := material.H6(theme, "Repeat password:")
@@ -549,10 +551,14 @@ PasswordViewMarker:
 					),
 				)
 
-
 				if centerWindow {
 					window.Perform(system.ActionCenter)
 					centerWindow = !centerWindow
+				}
+
+				if focusSearchBarOnWindowLoad {
+					gtx.Execute(key.FocusCmd{Tag: &searchInput})
+					focusSearchBarOnWindowLoad = false
 				}
 
 				e.Frame(gtx.Ops)
