@@ -28,6 +28,10 @@ type Context struct {
 	// Interested users must look up and populate these values manually.
 	Locale system.Locale
 
+	// Values is a map of program global data associated with the context.
+	// It is not for use by widgets.
+	Values map[string]any
+
 	input.Source
 	*op.Ops
 }
@@ -42,9 +46,8 @@ func (c Context) Sp(v unit.Sp) int {
 	return c.Metric.Sp(v)
 }
 
-// Disabled returns a copy of this context with a disabled Source,
-// blocking widgets from changing its state and receiving events.
+// Disabled returns a copy of this context that don't deliver any events.
 func (c Context) Disabled() Context {
-	c.Source = input.Source{}
+	c.Source = c.Source.Disabled()
 	return c
 }

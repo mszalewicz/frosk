@@ -23,22 +23,22 @@ __attribute__ ((visibility ("hidden"))) CALayer *gio_layerFactory(BOOL presentWi
 - (void)windowWillMiniaturize:(NSNotification *)notification {
 	NSWindow *window = (NSWindow *)[notification object];
   GioView *view = (GioView *)window.contentView;
-	gio_onHide(view.handle);
+	gio_onDraw(view.handle);
 }
 - (void)windowDidDeminiaturize:(NSNotification *)notification {
 	NSWindow *window = (NSWindow *)[notification object];
   GioView *view = (GioView *)window.contentView;
-	gio_onShow(view.handle);
+	gio_onDraw(view.handle);
 }
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
 	NSWindow *window = (NSWindow *)[notification object];
   GioView *view = (GioView *)window.contentView;
-	gio_onFullscreen(view.handle);
+	gio_onDraw(view.handle);
 }
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
 	NSWindow *window = (NSWindow *)[notification object];
   GioView *view = (GioView *)window.contentView;
-	gio_onWindowed(view.handle);
+	gio_onDraw(view.handle);
 }
 - (void)windowDidChangeScreen:(NSNotification *)notification {
 	NSWindow *window = (NSWindow *)[notification object];
@@ -132,22 +132,25 @@ static void handleMouse(GioView *view, NSEvent *event, int typ, CGFloat dx, CGFl
 	handleMouse(self, event, MOUSE_SCROLL, dx, dy);
 }
 - (void)keyDown:(NSEvent *)event {
-	[self interpretKeyEvents:[NSArray arrayWithObject:event]];
 	NSString *keys = [event charactersIgnoringModifiers];
-	gio_onKeys(self.handle, (__bridge CFTypeRef)keys, [event timestamp], [event modifierFlags], true);
+	gio_onKeys(self.handle, (__bridge CFTypeRef)event, (__bridge CFTypeRef)keys, [event timestamp], [event modifierFlags], true);
+}
+- (void)flagsChanged:(NSEvent *)event {
+	[self interpretKeyEvents:[NSArray arrayWithObject:event]];
+	gio_onFlagsChanged(self.handle, [event modifierFlags]);
 }
 - (void)keyUp:(NSEvent *)event {
 	NSString *keys = [event charactersIgnoringModifiers];
-	gio_onKeys(self.handle, (__bridge CFTypeRef)keys, [event timestamp], [event modifierFlags], false);
+	gio_onKeys(self.handle, (__bridge CFTypeRef)event, (__bridge CFTypeRef)keys, [event timestamp], [event modifierFlags], false);
 }
 - (void)insertText:(id)string {
 	gio_onText(self.handle, (__bridge CFTypeRef)string);
 }
-- (void)doCommandBySelector:(SEL)sel {
-	// Don't pass commands up the responder chain.
-	// They will end up in a beep.
+- (void)doCommandBySelector:(SEL)action {
+	if (!gio_onCommandBySelector(self.handle)) {
+		[super doCommandBySelector:action];
+	}
 }
-
 - (BOOL)hasMarkedText {
 	int res = gio_hasMarkedText(self.handle);
 	return res ? YES : NO;
@@ -202,10 +205,10 @@ static void handleMouse(GioView *view, NSEvent *event, int typ, CGFloat dx, CGFl
     return [[self window] convertRectToScreen:r];
 }
 - (void)applicationWillUnhide:(NSNotification *)notification {
-	gio_onShow(self.handle);
+	gio_onDraw(self.handle);
 }
 - (void)applicationDidHide:(NSNotification *)notification {
-	gio_onHide(self.handle);
+	gio_onDraw(self.handle);
 }
 - (void)dealloc {
 	gio_onDestroy(self.handle);
@@ -366,7 +369,7 @@ void gio_setCursor(NSUInteger curID) {
 	}
 }
 
-CFTypeRef gio_createWindow(CFTypeRef viewRef, CGFloat width, CGFloat height, CGFloat minWidth, CGFloat minHeight, CGFloat maxWidth, CGFloat maxHeight) {
+CFTypeRef gio_createWindow(CFTypeRef viewRef, CGFloat width, CGFloat height) {
 	@autoreleasepool {
 		NSRect rect = NSMakeRect(0, 0, width, height);
 		NSUInteger styleMask = NSTitledWindowMask |
@@ -378,16 +381,9 @@ CFTypeRef gio_createWindow(CFTypeRef viewRef, CGFloat width, CGFloat height, CGF
 													   styleMask:styleMask
 														 backing:NSBackingStoreBuffered
 														   defer:NO];
-		if (minWidth > 0 || minHeight > 0) {
-			window.contentMinSize = NSMakeSize(minWidth, minHeight);
-		}
-		if (maxWidth > 0 || maxHeight > 0) {
-			window.contentMaxSize = NSMakeSize(maxWidth, maxHeight);
-		}
 		[window setAcceptsMouseMovedEvents:YES];
 		NSView *view = (__bridge NSView *)viewRef;
 		[window setContentView:view];
-		[window makeFirstResponder:view];
 		window.delegate = globalWindowDel;
 		return (__bridge_retained CFTypeRef)window;
 	}
@@ -424,7 +420,6 @@ void gio_viewSetHandle(CFTypeRef viewRef, uintptr_t handle) {
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
 	[NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 	[NSApp activateIgnoringOtherApps:YES];
-	gio_onFinishLaunching();
 }
 @end
 
@@ -453,5 +448,27 @@ void gio_main() {
 		globalWindowDel = [[GioWindowDelegate alloc] init];
 
 		[NSApp run];
+	}
+}
+
+@interface AppListener : NSObject
+@end
+
+static AppListener *appListener;
+
+@implementation AppListener
+- (void)launchFinished:(NSNotification *)notification {
+	appListener = nil;
+	gio_onFinishLaunching();
+}
+@end
+
+void gio_init() {
+	@autoreleasepool {
+		appListener = [[AppListener alloc] init];
+		[[NSNotificationCenter defaultCenter] addObserver:appListener
+												 selector:@selector(launchFinished:)
+													 name:NSApplicationDidFinishLaunchingNotification
+												   object:nil];
 	}
 }
