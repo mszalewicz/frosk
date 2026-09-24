@@ -50,8 +50,10 @@ First, install Gio:
 
 ```bash
 go install gioui.org/cmd/gogio@latest
+```
 
 Then run:
 
 ```bash
 make run
+```
